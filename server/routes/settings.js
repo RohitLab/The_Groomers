@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getSettings, updateSettings } from '../services/localStorage.js'
+import { getSettings, updateSettings } from '../services/googleSheets.js'
 
 const router = Router()
 

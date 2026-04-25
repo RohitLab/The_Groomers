@@ -40,8 +40,8 @@ export function DashboardProvider({ children }) {
       const res = await api.getCustomers(filter === 'all' ? '' : filter)
       setCustomers(res.customers || [])
     } catch {
-      // Demo data
-      setCustomers(getDemoCustomers())
+      console.error('Failed to fetch customers')
+      setCustomers([])
     } finally {
       setLoading(false)
     }
@@ -105,14 +105,5 @@ export function DashboardProvider({ children }) {
 
 export const useDashboard = () => useContext(DashboardContext)
 
-function getDemoCustomers() {
-  return [
-    { phone: '9876543210', name: 'Rahul Sharma', email: 'rahul@email.com', visits: 8, tag: 'VIP', lastVisit: '2026-04-20', firstVisit: '2025-11-15', totalCashback: 450, instagramFollowed: true, facebookFollowed: true, googleReview: true, gender: 'Male' },
-    { phone: '9876543211', name: 'Priya Patel', email: 'priya@email.com', visits: 3, tag: 'Regular', lastVisit: '2026-04-18', firstVisit: '2026-01-10', totalCashback: 180, instagramFollowed: true, facebookFollowed: false, googleReview: true, gender: 'Female' },
-    { phone: '9876543212', name: 'Amit Kumar', email: 'amit@email.com', visits: 1, tag: 'New', lastVisit: '2026-04-22', firstVisit: '2026-04-22', totalCashback: 30, instagramFollowed: false, facebookFollowed: false, googleReview: false, gender: 'Male' },
-    { phone: '9876543213', name: 'Sneha Gupta', email: 'sneha@email.com', visits: 12, tag: 'VIP', lastVisit: '2026-04-24', firstVisit: '2025-06-01', totalCashback: 890, instagramFollowed: true, facebookFollowed: true, googleReview: true, gender: 'Female' },
-    { phone: '9876543214', name: 'Vikram Singh', email: 'vikram@email.com', visits: 2, tag: 'Regular', lastVisit: '2026-03-15', firstVisit: '2026-02-20', totalCashback: 95, instagramFollowed: false, facebookFollowed: false, googleReview: true, gender: 'Male' },
-    { phone: '9876543215', name: 'Meera Joshi', email: 'meera@email.com', visits: 6, tag: 'VIP', lastVisit: '2026-04-10', firstVisit: '2025-09-08', totalCashback: 520, instagramFollowed: true, facebookFollowed: true, googleReview: true, gender: 'Female' },
-    { phone: '9876543216', name: 'Arjun Reddy', email: 'arjun@email.com', visits: 1, tag: 'New', lastVisit: '2026-04-25', firstVisit: '2026-04-25', totalCashback: 45, instagramFollowed: true, facebookFollowed: false, googleReview: false, gender: 'Male' },
-  ]
-}
+
+

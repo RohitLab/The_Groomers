@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { composeCampaignMessage } from '../agents/marketingAgent.js'
-import { getAllCustomers, getSettings } from '../services/localStorage.js'
+import { getAllCustomers, getSettings } from '../services/googleSheets.js'
 
 const router = Router()
 

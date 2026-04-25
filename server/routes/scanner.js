@@ -1,15 +1,7 @@
 import { Router } from 'express'
-import { lookupByPhone, appendCustomer, updateCustomer, getSettings } from '../services/localStorage.js'
+import { lookupByPhone, appendCustomer, updateCustomer, getSettings } from '../services/googleSheets.js'
 
 const router = Router()
-
-// Demo customers for when Google Sheets is not configured
-const DEMO_CUSTOMERS = {
-  '9876543210': { phone: '9876543210', name: 'Rahul Sharma', email: 'rahul@email.com', visits: 8, tag: 'VIP', lastVisit: '2026-04-20', firstVisit: '2025-11-15', totalCashback: 450, googleReview: true, gender: 'Male' },
-  '9876543211': { phone: '9876543211', name: 'Priya Patel', email: 'priya@email.com', visits: 3, tag: 'Regular', lastVisit: '2026-04-18', firstVisit: '2026-01-10', totalCashback: 180, googleReview: true, gender: 'Female' },
-  '9876543213': { phone: '9876543213', name: 'Sneha Gupta', email: 'sneha@email.com', visits: 12, tag: 'VIP', lastVisit: '2026-04-24', firstVisit: '2025-06-01', totalCashback: 890, googleReview: true, gender: 'Female' },
-  '9876543215': { phone: '9876543215', name: 'Meera Joshi', email: 'meera@email.com', visits: 6, tag: 'VIP', lastVisit: '2026-04-10', firstVisit: '2025-09-08', totalCashback: 520, googleReview: true, gender: 'Female' },
-}
 
 // Lookup phone number
 router.post('/lookup', async (req, res) => {
@@ -20,11 +12,6 @@ router.post('/lookup', async (req, res) => {
 
   try {
     let result = await lookupByPhone(phone)
-
-    // Fallback to demo data if Sheets not connected
-    if (!result && DEMO_CUSTOMERS[phone]) {
-      result = { customer: { ...DEMO_CUSTOMERS[phone] } }
-    }
 
     if (result) {
       // Returning customer — increment visit
@@ -49,12 +36,7 @@ router.post('/lookup', async (req, res) => {
     }
   } catch (err) {
     console.error('Lookup error:', err)
-    // Last resort: check demo data
-    if (DEMO_CUSTOMERS[phone]) {
-      res.json({ found: true, customer: DEMO_CUSTOMERS[phone] })
-    } else {
-      res.json({ found: false })
-    }
+    res.json({ found: false })
   }
 })
 
@@ -86,11 +68,15 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    await appendCustomer(customer)
-    res.json({ success: true, customer })
+    const success = await appendCustomer(customer)
+    if (success) {
+      res.json({ success: true, customer })
+    } else {
+      res.status(500).json({ error: 'Failed to save customer' })
+    }
   } catch (err) {
     console.error('Register error:', err)
-    res.json({ success: true, customer }) // Continue in demo mode
+    res.status(500).json({ error: 'Registration failed' })
   }
 })
 
@@ -104,7 +90,7 @@ router.post('/return-visit', async (req, res) => {
     res.json({ success: true })
   } catch (err) {
     console.error('Return visit error:', err)
-    res.json({ success: true })
+    res.status(500).json({ error: 'Return visit update failed' })
   }
 })
 
@@ -143,9 +129,7 @@ router.post('/bill', async (req, res) => {
     res.json({ success: true, cashback, billAmount: bill, percent })
   } catch (err) {
     console.error('Bill error:', err)
-    const bill = parseFloat(billAmount)
-    const cashback = (bill * 5) / 100
-    res.json({ success: true, cashback, billAmount: bill, percent: 5 })
+    res.status(500).json({ error: 'Bill processing failed' })
   }
 })
 
