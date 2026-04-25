@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/dashboard", "destination": "/" },
+    { "source": "/scan", "destination": "/" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
