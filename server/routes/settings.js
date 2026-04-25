@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
         cashbackPercent: 5,
         minBill: 100,
         maxCashback: 500,
-        instagramUrl: 'https://instagram.com/thegrommers',
+        instagramUrl: 'https://www.instagram.com/thegroomerss/',
         facebookUrl: 'https://facebook.com/thegrommers',
         googleReviewUrl: 'https://g.page/thegrommers/review',
         whatsappNumber: '',
