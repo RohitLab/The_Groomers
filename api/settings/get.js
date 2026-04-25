@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import { getSettings, updateSettings } from '../services/googleSheets.js'
+import { getSettings } from '../_lib/googleSheets.js'
 
-const router = Router()
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
-// Get settings
-router.get('/', async (req, res) => {
   try {
     const settings = await getSettings()
     res.json({ settings })
@@ -23,17 +23,4 @@ router.get('/', async (req, res) => {
       },
     })
   }
-})
-
-// Update settings
-router.put('/', async (req, res) => {
-  try {
-    await updateSettings(req.body)
-    res.json({ success: true })
-  } catch (err) {
-    console.error('Update settings error:', err)
-    res.json({ success: true }) // Save locally in demo mode
-  }
-})
-
-export default router
+}

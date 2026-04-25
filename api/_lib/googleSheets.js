@@ -27,14 +27,16 @@ function getClient() {
   }
 }
 
-// Auto-initialize sheet tabs and headers on first access
+function getSheetId() {
+  return process.env.GOOGLE_SHEETS_ID
+}
+
 async function ensureInitialized() {
   if (initialized) return
   const client = getClient()
   if (!client) return
 
   try {
-    // Get spreadsheet metadata to check existing sheets
     const meta = await client.spreadsheets.get({
       spreadsheetId: getSheetId(),
       fields: 'sheets.properties.title,sheets.properties.sheetId',
@@ -42,7 +44,6 @@ async function ensureInitialized() {
     const sheetNames = meta.data.sheets.map(s => s.properties.title)
     const requests = []
 
-    // Rename Sheet1 to Customers if it exists and Customers doesn't
     if (sheetNames.includes('Sheet1') && !sheetNames.includes(SHEET_NAME)) {
       const sheet1 = meta.data.sheets.find(s => s.properties.title === 'Sheet1')
       requests.push({
@@ -51,12 +52,9 @@ async function ensureInitialized() {
           fields: 'title',
         },
       })
-      console.log('Renamed Sheet1 → Customers')
     }
 
-    // Add Settings sheet if missing
     if (!sheetNames.includes(SETTINGS_SHEET) && !sheetNames.includes('Sheet1')) {
-      // Only add if we didn't just rename Sheet1
       if (!sheetNames.includes(SHEET_NAME)) {
         requests.push({ addSheet: { properties: { title: SHEET_NAME } } })
       }
@@ -72,7 +70,6 @@ async function ensureInitialized() {
       })
     }
 
-    // Add header row to Customers if empty
     const cusData = await client.spreadsheets.values.get({
       spreadsheetId: getSheetId(),
       range: `${SHEET_NAME}!A1:P1`,
@@ -84,20 +81,13 @@ async function ensureInitialized() {
         valueInputOption: 'RAW',
         requestBody: { values: [COLUMNS] },
       })
-      console.log('Added Customers header row')
     }
 
     initialized = true
-    console.log('Google Sheets initialized successfully')
   } catch (err) {
     console.error('Sheet initialization error:', err.message)
-    // Still mark as initialized to avoid retrying every call
     initialized = true
   }
-}
-
-function getSheetId() {
-  return process.env.GOOGLE_SHEETS_ID
 }
 
 function rowToCustomer(row) {
@@ -143,7 +133,6 @@ export async function lookupByPhone(phone) {
       range: `${SHEET_NAME}!A:P`,
     })
     const rows = res.data.values || []
-    // Skip header row
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] === phone) {
         return { customer: rowToCustomer(rows[i]), rowIndex: i + 1 }
@@ -186,7 +175,6 @@ export async function updateCustomer(phone, fields) {
     if (!result) return false
 
     const updated = { ...result.customer, ...fields }
-    // Recalculate tag
     if (updated.visits >= 5) updated.tag = 'VIP'
     else if (updated.visits >= 1) updated.tag = 'Regular'
 
@@ -269,7 +257,7 @@ export async function updateSettings(newSettings) {
   }
 }
 
-function getDefaultSettings() {
+export function getDefaultSettings() {
   return {
     salonName: 'The Grommers',
     cashbackPercent: 5,

@@ -1,31 +1,10 @@
-import { Router } from 'express'
-import { composeCampaignMessage } from '../agents/marketingAgent.js'
-import { getAllCustomers, getSettings } from '../services/googleSheets.js'
+import { getAllCustomers } from '../_lib/googleSheets.js'
 
-const router = Router()
-
-// Compose campaign messages using AI
-router.post('/compose', async (req, res) => {
-  const { audience, occasion, festival, customTopic } = req.body
-
-  try {
-    const settings = await getSettings()
-    const variants = await composeCampaignMessage({
-      audience,
-      occasion,
-      festival,
-      customTopic,
-      salonName: settings.salonName || 'The Grommers',
-    })
-    res.json({ variants })
-  } catch (err) {
-    console.error('Campaign compose error:', err)
-    res.status(500).json({ error: 'Failed to compose campaign' })
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
   }
-})
 
-// Export filtered customer phone list
-router.post('/export', async (req, res) => {
   const { filter } = req.body
 
   try {
@@ -63,6 +42,4 @@ router.post('/export', async (req, res) => {
     console.error('Export error:', err)
     res.status(500).json({ error: 'Export failed' })
   }
-})
-
-export default router
+}

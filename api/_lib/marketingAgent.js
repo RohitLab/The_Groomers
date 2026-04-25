@@ -46,7 +46,6 @@ Make messages appropriate for Indian audience. Include emojis. Keep each under 5
     })
 
     const text = res.content[0]?.text || ''
-    // Extract JSON from response
     const jsonMatch = text.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
       const variants = JSON.parse(jsonMatch[0])
