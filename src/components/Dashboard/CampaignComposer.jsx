@@ -1,141 +1,179 @@
-import { useState } from 'react'
-import { api } from '../../utils/api'
+import { useState, useMemo } from 'react'
+import { useDashboard } from '../../context/DashboardContext'
 
-const AUDIENCES = ['All Customers', 'VIP Only', 'Regular', 'New Customers', 'Inactive (30+ days)']
-const OCCASIONS = ['Festival', 'Discount Offer', 'New Service', 'Appointment Reminder', 'Custom']
-const FESTIVALS = ['Diwali', 'Holi', 'New Year', 'Eid', 'Christmas', 'Navratri', 'Raksha Bandhan']
+/* ─────────────────────────────────────────────────────────────────
+   FEATURE 1 — AI MESSAGE GENERATOR
+───────────────────────────────────────────────────────────────── */
+const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
-export default function CampaignComposer() {
-  const [campaignStep, setCampaignStep] = useState('audience')
-  const [audience, setAudience] = useState('')
-  const [occasion, setOccasion] = useState('')
-  const [festival, setFestival] = useState('')
-  const [customTopic, setCustomTopic] = useState('')
+const SYSTEM_PROMPT = `You are a WhatsApp marketing expert for an Indian unisex salon called The Groomers. Generate 3 short attractive WhatsApp broadcast messages in the requested language. Each under 200 words. Include emojis. End with salon URL: the-groomers.vercel.app/scan
+
+Return ONLY a valid JSON array (no markdown, no extra text) in this exact format:
+[
+  { "style": "Formal", "emoji": "🎩", "text": "..." },
+  { "style": "Friendly", "emoji": "😊", "text": "..." },
+  { "style": "Fun", "emoji": "🎉", "text": "..." }
+]`
+
+async function callClaude(offer, language) {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('NO_KEY')
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1200,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Offer: ${offer}\nLanguage: ${language}\n\nGenerate 3 WhatsApp message variants (Formal, Friendly, Fun).`,
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Claude error ${res.status}`)
+  const data = await res.json()
+  const raw = data.content?.[0]?.text || ''
+  // Strip markdown code fences if present
+  const clean = raw.replace(/```json|```/g, '').trim()
+  return JSON.parse(clean)
+}
+
+function demoVariants(offer) {
+  return [
+    {
+      style: 'Formal', emoji: '🎩',
+      text: `Dear Valued Guest,\n\nWe're delighted to present an exclusive offer at The Groomers — ${offer}.\n\nWe warmly invite you to experience our world-class grooming services.\n\n📍 Book your appointment today!\n🌐 the-groomers.vercel.app/scan\n\nWarm regards,\nThe Groomers Unisex Salon`,
+    },
+    {
+      style: 'Friendly', emoji: '😊',
+      text: `Hey! 👋\n\nGreat news from The Groomers! ✨\n${offer} 🎁\n\nWe'd love to pamper you — come on in!\n\n💇 Book your slot today.\n🔗 the-groomers.vercel.app/scan\n\nSee you soon! 😊`,
+    },
+    {
+      style: 'Fun', emoji: '🎉',
+      text: `🚨 BIG OFFER ALERT 🚨\n\n${offer} 💥💥\n\nYou NEED this, trust us! 💇‍♀️💇‍♂️✨\n\nDon't sleep on it — slots are flying! 🏃‍♂️💨\n\n👉 the-groomers.vercel.app/scan\n\n#TheGroomers #GlowUp #SalonLife`,
+    },
+  ]
+}
+
+function MessageCard({ variant, index }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(variant.text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="cc-message-card glass-card">
+      <div className="cc-message-card__header">
+        <span className="cc-message-card__style">
+          {variant.emoji} {variant.style}
+        </span>
+        <button
+          className={`glass-btn ${copied ? 'glass-btn--success' : ''}`}
+          onClick={handleCopy}
+        >
+          {copied ? '✓ Copied!' : '📋 Copy'}
+        </button>
+      </div>
+      <p className="cc-message-card__text">{variant.text}</p>
+    </div>
+  )
+}
+
+function AIMessageGenerator() {
+  const [offer, setOffer] = useState('')
+  const [language, setLanguage] = useState('English')
   const [variants, setVariants] = useState([])
-  const [selectedVariant, setSelectedVariant] = useState(0)
-  const [editedMessage, setEditedMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleCompose = async () => {
+  const handleGenerate = async () => {
+    if (!offer.trim()) return
     setLoading(true)
+    setError('')
+    setVariants([])
     try {
-      const res = await api.composeCampaign({
-        audience,
-        occasion,
-        festival: occasion === 'Festival' ? festival : null,
-        customTopic: occasion === 'Custom' ? customTopic : null,
-      })
-      setVariants(res.variants || [])
-      setSelectedVariant(0)
-      setEditedMessage(res.variants?.[0]?.text || '')
-      setCampaignStep('review')
-    } catch {
-      // Demo variants
-      const demo = generateDemoVariants(audience, occasion, festival)
-      setVariants(demo)
-      setSelectedVariant(0)
-      setEditedMessage(demo[0]?.text || '')
-      setCampaignStep('review')
+      const result = await callClaude(offer.trim(), language)
+      setVariants(result)
+    } catch (err) {
+      if (err.message === 'NO_KEY') {
+        setError('⚠️ VITE_ANTHROPIC_API_KEY not set — showing demo messages.')
+      } else {
+        setError('⚠️ Claude API error — showing demo messages.')
+        console.error(err)
+      }
+      setVariants(demoVariants(offer.trim()))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(editedMessage)
-  }
-
-  const handleWhatsApp = () => {
-    const encoded = encodeURIComponent(editedMessage)
-    window.open(`https://wa.me/?text=${encoded}`, '_blank')
-  }
-
-  const handleReset = () => {
-    setCampaignStep('audience')
-    setAudience('')
-    setOccasion('')
-    setFestival('')
-    setCustomTopic('')
-    setVariants([])
-    setEditedMessage('')
-  }
-
   return (
-    <div>
-      <div className="dashboard-header">
-        <h1 className="dashboard-header__title">Campaign Composer</h1>
-        {campaignStep !== 'audience' && (
-          <button className="glass-btn" onClick={handleReset}>← Start Over</button>
-        )}
+    <div className="cc-card glass-card">
+      <div className="cc-card__header">
+        <span className="cc-card__icon">🤖</span>
+        <div>
+          <h2 className="cc-card__title">AI Message Generator</h2>
+          <p className="cc-card__subtitle">Generate 3 WhatsApp message variants with Claude AI</p>
+        </div>
       </div>
 
-      <div className="campaign-composer">
-        {campaignStep === 'audience' && (
-          <div className="anim-fade-up">
-            <div className="campaign-step">
-              <p className="campaign-step__label">Who should receive this message?</p>
-              <div className="campaign-options">
-                {AUDIENCES.map(a => (
-                  <button key={a} className={`campaign-option ${audience === a ? 'campaign-option--selected' : ''}`} onClick={() => setAudience(a)}>{a}</button>
-                ))}
-              </div>
-            </div>
-            {audience && (
-              <div className="campaign-step anim-fade-up">
-                <p className="campaign-step__label">What's the occasion?</p>
-                <div className="campaign-options">
-                  {OCCASIONS.map(o => (
-                    <button key={o} className={`campaign-option ${occasion === o ? 'campaign-option--selected' : ''}`} onClick={() => setOccasion(o)}>{o}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {occasion === 'Festival' && (
-              <div className="campaign-step anim-fade-up">
-                <p className="campaign-step__label">Which festival?</p>
-                <div className="campaign-options">
-                  {FESTIVALS.map(f => (
-                    <button key={f} className={`campaign-option ${festival === f ? 'campaign-option--selected' : ''}`} onClick={() => setFestival(f)}>{f}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {occasion === 'Custom' && (
-              <div className="campaign-step anim-fade-up">
-                <p className="campaign-step__label">Describe your campaign</p>
-                <textarea className="message-edit-area" placeholder="e.g., 20% off all hair treatments this weekend..." value={customTopic} onChange={e => setCustomTopic(e.target.value)} />
-              </div>
-            )}
-            {audience && occasion && (occasion !== 'Festival' || festival) && (
-              <button className="glass-btn glass-btn--primary glass-btn--large" onClick={handleCompose} disabled={loading} style={{ marginTop: 'var(--space-4)' }}>
-                {loading ? <><span className="spinner" /> Generating...</> : '✨ Generate Messages'}
+      <div className="cc-card__body">
+        <div className="cc-field">
+          <label className="cc-label">Describe your offer</label>
+          <textarea
+            className="glass-input message-edit-area cc-textarea"
+            placeholder="e.g. Diwali special, 20% off on all services, this weekend only, for all customers"
+            value={offer}
+            onChange={e => setOffer(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        <div className="cc-field">
+          <label className="cc-label">Language</label>
+          <div className="cc-lang-row">
+            {LANGUAGES.map(lang => (
+              <button
+                key={lang}
+                className={`campaign-option ${language === lang ? 'campaign-option--selected' : ''}`}
+                onClick={() => setLanguage(lang)}
+              >
+                {lang}
               </button>
-            )}
+            ))}
           </div>
-        )}
+        </div>
 
-        {campaignStep === 'review' && (
-          <div className="anim-fade-up">
-            <p className="campaign-step__label" style={{ marginBottom: 'var(--space-4)' }}>Choose a message style:</p>
-            <div className="message-variants">
-              {variants.map((v, i) => (
-                <div key={i} className={`glass-card message-variant ${selectedVariant === i ? 'message-variant--selected' : ''}`} onClick={() => { setSelectedVariant(i); setEditedMessage(v.text) }}>
-                  <p className="message-variant__style">{v.style}</p>
-                  <p className="message-variant__text">{v.text}</p>
-                </div>
-              ))}
-            </div>
+        <button
+          className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+          onClick={handleGenerate}
+          disabled={loading || !offer.trim()}
+          id="generate-messages-btn"
+        >
+          {loading ? <><span className="spinner" /> Generating...</> : '✨ Generate Messages'}
+        </button>
 
-            <div style={{ marginTop: 'var(--space-6)' }}>
-              <p className="campaign-step__label">Edit your message:</p>
-              <textarea className="message-edit-area" value={editedMessage} onChange={e => setEditedMessage(e.target.value)} rows={5} />
-            </div>
+        {error && <p className="cc-error">{error}</p>}
 
-            <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>
-              <button className="glass-btn glass-btn--primary" onClick={handleCopy}>📋 Copy Message</button>
-              <button className="glass-btn glass-btn--success" onClick={handleWhatsApp}>💬 Open WhatsApp</button>
-              <button className="glass-btn" onClick={() => { /* CSV export */ }}>📥 Export Phone List</button>
-            </div>
+        {variants.length > 0 && (
+          <div className="cc-variants anim-fade-up">
+            <p className="cc-variants__label">Choose &amp; copy a message variant:</p>
+            {variants.map((v, i) => (
+              <MessageCard key={i} variant={v} index={i} />
+            ))}
           </div>
         )}
       </div>
@@ -143,11 +181,126 @@ export default function CampaignComposer() {
   )
 }
 
-function generateDemoVariants(audience, occasion, festival) {
-  const name = festival || occasion
-  return [
-    { style: '🎩 Formal', text: `Dear Valued Customer,\n\nWishing you a wonderful ${name}! As a token of our appreciation, enjoy 20% off all services this week at The Grommers.\n\nBook your appointment today!\n📞 Call us or visit our salon.\n\nWarm regards,\nThe Grommers Unisex Salon` },
-    { style: '😊 Casual', text: `Hey there! 👋\n\nHappy ${name}! 🎉\n\nWe've got a special treat for you — 20% OFF all services this week!\n\nCome pamper yourself at The Grommers. You deserve it! 💇\n\nSee you soon! ✨` },
-    { style: '🎉 Fun', text: `${name} vibes are HERE! 🥳🎊\n\nGuess what? FLAT 20% OFF at The Grommers! 💥\n\nNew look, new you — let's gooo! 💇‍♀️💇‍♂️\n\nBook NOW before slots fill up! 🏃‍♂️💨\n\n#TheGrommers #${name.replace(/\s/g, '')} #SalonLife` },
-  ]
+/* ─────────────────────────────────────────────────────────────────
+   FEATURE 2 — EXPORT CUSTOMER NUMBERS
+───────────────────────────────────────────────────────────────── */
+const FILTER_OPTIONS = [
+  { id: 'all',     label: 'All' },
+  { id: 'male',    label: 'Male' },
+  { id: 'female',  label: 'Female' },
+  { id: 'VIP',     label: 'VIP' },
+  { id: 'Regular', label: 'Regular' },
+  { id: 'New',     label: 'New' },
+  { id: 'inactive30', label: 'Last visit > 30 days' },
+  { id: 'inactive60', label: 'Last visit > 60 days' },
+]
+
+function daysSinceLastVisit(customer) {
+  const last = customer.lastVisit || customer.firstVisit
+  if (!last) return 999
+  return Math.floor((Date.now() - new Date(last).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function ExportCustomerNumbers() {
+  const { allCustomers } = useDashboard()
+  const [activeFilter, setActiveFilter] = useState('all')
+
+  const filtered = useMemo(() => {
+    if (!allCustomers) return []
+    switch (activeFilter) {
+      case 'male':       return allCustomers.filter(c => c.gender?.toLowerCase() === 'male')
+      case 'female':     return allCustomers.filter(c => c.gender?.toLowerCase() === 'female')
+      case 'VIP':        return allCustomers.filter(c => c.tag === 'VIP')
+      case 'Regular':    return allCustomers.filter(c => c.tag === 'Regular')
+      case 'New':        return allCustomers.filter(c => c.tag === 'New')
+      case 'inactive30': return allCustomers.filter(c => daysSinceLastVisit(c) > 30)
+      case 'inactive60': return allCustomers.filter(c => daysSinceLastVisit(c) > 60)
+      default:           return allCustomers
+    }
+  }, [allCustomers, activeFilter])
+
+  const handleExport = () => {
+    const rows = [['Name', 'Mobile Number', 'Tag']]
+    filtered.forEach(c => {
+      rows.push([
+        (c.name || '').replace(/,/g, ' '),
+        (c.phone || c.mobile || ''),
+        (c.tag || ''),
+      ])
+    })
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const date = new Date().toISOString().split('T')[0]
+    a.href = url
+    a.download = `groomers-campaign-${date}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="cc-card glass-card">
+      <div className="cc-card__header">
+        <span className="cc-card__icon">📤</span>
+        <div>
+          <h2 className="cc-card__title">Export Customer Numbers</h2>
+          <p className="cc-card__subtitle">Filter and download a CSV for WhatsApp campaigns</p>
+        </div>
+      </div>
+
+      <div className="cc-card__body">
+        <div className="cc-field">
+          <label className="cc-label">Filter customers</label>
+          <div className="cc-filter-grid">
+            {FILTER_OPTIONS.map(f => (
+              <button
+                key={f.id}
+                className={`campaign-option ${activeFilter === f.id ? 'campaign-option--selected' : ''}`}
+                onClick={() => setActiveFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cc-export-count glass-card glass-card--subtle">
+          <span className="cc-export-count__number">{filtered.length}</span>
+          <span className="cc-export-count__text">customers selected</span>
+        </div>
+
+        <button
+          className="glass-btn glass-btn--success glass-btn--large glass-btn--full"
+          onClick={handleExport}
+          disabled={filtered.length === 0}
+          id="export-csv-btn"
+        >
+          📥 Export Numbers as CSV
+        </button>
+
+        <p className="cc-export-hint">
+          Downloads as <code>groomers-campaign-[date].csv</code> with columns: Name, Mobile Number, Tag
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MAIN EXPORT
+───────────────────────────────────────────────────────────────── */
+export default function CampaignComposer() {
+  return (
+    <div>
+      <div className="dashboard-header">
+        <h1 className="dashboard-header__title">Campaign Composer</h1>
+      </div>
+
+      <div className="cc-layout">
+        <AIMessageGenerator />
+        <ExportCustomerNumbers />
+      </div>
+    </div>
+  )
 }
