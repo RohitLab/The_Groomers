@@ -31,7 +31,7 @@ function ScanContent() {
 
       {/* Brand logo */}
       <div className="anim-fade-up" style={{ marginBottom: 'var(--space-6)' }}>
-        <LogoBrand size="large" />
+        <LogoBrand size="large" theme="light" />
       </div>
 
       {/* Main content */}

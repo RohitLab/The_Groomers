@@ -14,7 +14,7 @@ export default function Sidebar() {
   return (
     <aside className="dashboard-sidebar">
       <div className="sidebar__logo">
-        <LogoBrand size="medium" />
+        <LogoBrand size="medium" theme="dark" />
       </div>
 
       <nav className="sidebar__nav">
