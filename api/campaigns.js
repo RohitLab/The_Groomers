@@ -74,10 +74,18 @@ export default async function handler(req, res) {
           }
 
           const systemPrompt =
-            'You are a WhatsApp marketing expert for an Indian unisex salon called The Groomers. ' +
-            'Generate 3 short attractive WhatsApp broadcast messages in the requested language. ' +
-            'Each under 150 words. Include emojis. ' +
-            'End each message with: the-groomers.vercel.app/scan\n\n' +
+            'You are an expert WhatsApp marketing copywriter for The Groomers, a premium unisex salon in Nashik.\n' +
+            'Write 3 highly attractive, emotional, and action-driving WhatsApp broadcast messages.\n\n' +
+            'Rules:\n' +
+            '- Use power words that create urgency and excitement\n' +
+            '- Add relevant emojis throughout naturally\n' +
+            '- Include a clear call to action\n' +
+            '- Make it feel personal and warm, not corporate\n' +
+            '- For Hindi/Hinglish use natural conversational tone\n' +
+            "- Add offer expiry urgency like 'This weekend only' or 'Limited slots available'\n" +
+            '- End with: 👉 +91 9119533325\n\n' +
+            'Label exactly as: FORMAL, FRIENDLY, FUN\n' +
+            'Each message max 120 words.\n\n' +
             'Return ONLY a valid JSON array, no markdown:\n' +
             '[{"style":"Formal","emoji":"🎩","text":"..."},{"style":"Friendly","emoji":"😊","text":"..."},{"style":"Fun","emoji":"🎉","text":"..."}]'
 
@@ -89,7 +97,7 @@ export default async function handler(req, res) {
               'anthropic-version': '2023-06-01',
             },
             body: JSON.stringify({
-              model: 'claude-sonnet-4-5',
+              model: 'claude-opus-4-5',
               max_tokens: 1000,
               system: systemPrompt,
               messages: [
