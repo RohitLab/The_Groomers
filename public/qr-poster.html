@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Groomers — Scan & Earn QR</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- QR Code library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* ── Design tokens matching The Groomers theme ── */
+    :root {
+      --color-bg-primary:   #1A1A19;
+      --color-bg-secondary: #242422;
+      --color-bg-elevated:  #2C2C2A;
+      --color-cream:        #F1EFE8;
+      --color-taupe:        #888780;
+      --color-gold:         #F5A623;
+      --color-gold-light:   #FFCA6B;
+      --color-gold-dim:     rgba(245, 166, 35, 0.18);
+      --color-success:      #7EC699;
+      --glass-bg:           rgba(255, 255, 255, 0.06);
+      --glass-border:       rgba(255, 255, 255, 0.12);
+      --font:               'Inter', -apple-system, sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font);
+      background: var(--color-bg-primary);
+      color: var(--color-cream);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── Ambient background glow blobs ── */
+    .bg-blobs {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.25;
+      animation: blobDrift 8s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; background: #F5A623; top: -150px; left: -150px; animation-delay: 0s; }
+    .blob-2 { width: 400px; height: 400px; background: #7EC699; bottom: -100px; right: -100px; animation-delay: 3s; }
+    .blob-3 { width: 300px; height: 300px; background: #F1EFE8; top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: 1.5s; opacity: 0.08; }
+
+    @keyframes blobDrift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.05); }
+    }
+
+    /* ── Card ── */
+    .card {
+      position: relative;
+      z-index: 1;
+      width: min(420px, 96vw);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      padding: 36px 32px 32px;
+      text-align: center;
+      box-shadow:
+        0 0 0 1px rgba(245, 166, 35, 0.12),
+        0 24px 80px rgba(0, 0, 0, 0.55),
+        0 0 80px rgba(245, 166, 35, 0.06);
+      animation: cardIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Gold shimmer top bar */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--color-gold), var(--color-gold-light), var(--color-gold), transparent);
+      border-radius: 0 0 4px 4px;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer {
+      0%   { opacity: 0.6; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      margin-bottom: 20px;
+      animation: fadeUp 0.7s 0.2s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .logo-brand {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .logo-sub {
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 5px;
+      color: var(--color-gold);
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    /* ── Headline ── */
+    .headline {
+      animation: fadeUp 0.7s 0.3s cubic-bezier(0.16,1,0.3,1) both;
+      margin-bottom: 6px;
+    }
+    .headline h1 {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.15;
+      background: linear-gradient(135deg, var(--color-cream) 30%, var(--color-gold-light) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .headline-hi {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--color-taupe);
+      margin-top: 6px;
+      letter-spacing: 0.3px;
+      line-height: 1.5;
+    }
+    .headline-hi span { color: var(--color-gold); font-weight: 600; }
+
+    /* ── Divider ── */
+    .divider {
+      margin: 18px 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+    }
+
+    /* ── QR Container ── */
+    .qr-wrap {
+      animation: fadeUp 0.7s 0.4s cubic-bezier(0.16,1,0.3,1) both;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .qr-outer {
+      position: relative;
+      padding: 16px;
+      background: var(--color-bg-elevated);
+      border-radius: 20px;
+      border: 1px solid rgba(245, 166, 35, 0.25);
+      box-shadow:
+        0 0 0 4px var(--color-gold-dim),
+        0 12px 40px rgba(0,0,0,0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Animated corner accents */
+    .qr-outer::before, .qr-outer::after {
+      content: '';
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--color-gold);
+      border-style: solid;
+      border-radius: 4px;
+    }
+    .qr-outer::before { top: 6px; left: 6px; border-width: 3px 0 0 3px; }
+    .qr-outer::after  { bottom: 6px; right: 6px; border-width: 0 3px 3px 0; }
+    .corner-tr, .corner-bl {
+      position: absolute;
+      width: 22px; height: 22px;
+      border-color: var(--color-gold);
+      border-style: solid;
+      border-radius: 4px;
+    }
+    .corner-tr { top: 6px; right: 6px; border-width: 3px 3px 0 0; }
+    .corner-bl { bottom: 6px; left: 6px; border-width: 0 0 3px 3px; }
+
+    /* pulse ring */
+    .qr-outer .pulse-ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 24px;
+      border: 2px solid rgba(245, 166, 35, 0.3);
+      animation: pulseRing 2.5s ease-out infinite;
+    }
+    @keyframes pulseRing {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.06); }
+    }
+
+    #qrcode canvas, #qrcode img { border-radius: 6px; display: block; }
+
+    /* ── Scan icon hint ── */
+    .scan-hint {
+      animation: fadeUp 0.7s 0.5s cubic-bezier(0.16,1,0.3,1) both;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .scan-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      background: var(--color-gold-dim);
+      border: 1px solid rgba(245, 166, 35, 0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      animation: iconPop 1.8s ease-in-out infinite alternate;
+    }
+    @keyframes iconPop {
+      from { transform: scale(1); }
+      to   { transform: scale(1.1); }
+    }
+    .scan-hint-text { font-size: 13px; color: var(--color-taupe); }
+    .scan-hint-text strong { color: var(--color-cream); font-weight: 600; }
+
+    /* ── Benefits pills ── */
+    .benefits {
+      animation: fadeUp 0.7s 0.6s cubic-bezier(0.16,1,0.3,1) both;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 13px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--color-cream);
+      letter-spacing: 0.2px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .pill:hover {
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.22);
+    }
+    .pill-icon { font-size: 13px; }
+
+    /* ── CTA strip ── */
+    .cta-strip {
+      animation: fadeUp 0.7s 0.7s cubic-bezier(0.16,1,0.3,1) both;
+      background: linear-gradient(135deg, rgba(245,166,35,0.12), rgba(245,202,107,0.08));
+      border: 1px solid rgba(245,166,35,0.25);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+    .cta-strip p {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-gold-light);
+      line-height: 1.4;
+    }
+    .cta-strip small {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--color-taupe);
+      font-weight: 400;
+    }
+
+    /* ── URL ── */
+    .url-label {
+      animation: fadeUp 0.7s 0.8s cubic-bezier(0.16,1,0.3,1) both;
+      font-size: 10px;
+      color: var(--color-taupe);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Print button (hidden on print) ── */
+    .btn-print {
+      animation: fadeUp 0.7s 0.9s cubic-bezier(0.16,1,0.3,1) both;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 22px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, var(--color-gold), var(--color-gold-light));
+      color: #1A1A19;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(245,166,35,0.35);
+      transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+    }
+    .btn-print:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 8px 32px rgba(245,166,35,0.5);
+    }
+    .btn-print:active { transform: scale(0.98); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      body {
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bg-blobs { display: none; }
+      .btn-print { display: none !important; }
+      .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        margin: 0 auto;
+      }
+      .blob { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Ambient blobs -->
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- Poster Card -->
+  <div class="card" id="poster">
+
+    <!-- Logo -->
+    <div class="logo-wrap">
+      <div class="logo-brand">THE GROOMERS</div>
+      <div class="logo-sub">Unisex Salon</div>
+    </div>
+
+    <!-- Headline -->
+    <div class="headline">
+      <h1>Scan Karo,<br/>Cashback Pao! 🪄</h1>
+      <p class="headline-hi">
+        Apna number daalo &amp; <span>exclusive rewards</span> unlock karo —<br/>
+        Ek scan mein sab kuch!
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- QR Code -->
+    <div class="qr-wrap">
+      <div class="qr-outer">
+        <div class="pulse-ring"></div>
+        <div class="corner-tr"></div>
+        <div class="corner-bl"></div>
+        <div id="qrcode"></div>
+      </div>
+    </div>
+
+    <!-- Scan instruction -->
+    <div class="scan-hint">
+      <div class="scan-icon">📱</div>
+      <div class="scan-hint-text">
+        <strong>Camera open karo</strong> aur yahan point karo
+      </div>
+    </div>
+
+    <!-- Benefits pills -->
+    <div class="benefits">
+      <div class="pill"><span class="pill-icon">💰</span> Cashback</div>
+      <div class="pill"><span class="pill-icon">⭐</span> Rewards</div>
+      <div class="pill"><span class="pill-icon">🎁</span> Offers</div>
+      <div class="pill"><span class="pill-icon">🔔</span> Updates</div>
+    </div>
+
+    <!-- CTA strip -->
+    <div class="cta-strip">
+      <p>Pehli baar? Welcome Bonus mil sakta hai! 🎉</p>
+      <small>Register karo — 100% Free &amp; Instant</small>
+    </div>
+
+    <!-- URL -->
+    <div class="url-label">the-groomers.vercel.app/scan</div>
+
+    <!-- Print button -->
+    <br />
+    <button class="btn-print" onclick="window.print()">
+      🖨️ &nbsp;Print Karo
+    </button>
+
+  </div>
+
+  <script>
+    // Generate QR code pointing to the scan page
+    const qr = new QRCode(document.getElementById('qrcode'), {
+      text: 'https://the-groomers.vercel.app/scan',
+      width:  220,
+      height: 220,
+      colorDark:  '#1A1A19',
+      colorLight: '#F1EFE8',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+  </script>
+
+</body>
+</html>
