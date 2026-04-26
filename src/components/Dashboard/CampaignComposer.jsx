@@ -6,12 +6,18 @@ import { useDashboard } from '../../context/DashboardContext'
 ───────────────────────────────────────────────────────────────── */
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
-// Server-side proxy — avoids browser CORS restrictions with Anthropic API
-async function callClaude(offer, language) {
+const AI_MODELS = [
+  { id: 'claude-opus', label: 'Claude Opus', emoji: '🧠' },
+  { id: 'gpt-4o',      label: 'GPT-4o',      emoji: '⚡' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o mini', emoji: '🚀' },
+]
+
+// Server-side proxy — avoids browser CORS restrictions
+async function callAI(offer, language, aiModel) {
   const res = await fetch('/api/campaigns?action=generate-ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ offer, language }),
+    body: JSON.stringify({ offer, language, aiModel }),
   })
   if (!res.ok) throw new Error(`Server error ${res.status}`)
   const data = await res.json()
@@ -67,9 +73,11 @@ function MessageCard({ variant, index }) {
 function AIMessageGenerator() {
   const [offer, setOffer] = useState('')
   const [language, setLanguage] = useState('English')
+  const [aiModel, setAiModel] = useState('claude-opus')
   const [variants, setVariants] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const activeModelLabel = AI_MODELS.find(m => m.id === aiModel)?.label || 'AI'
 
   const handleGenerate = async () => {
     if (!offer.trim()) return
@@ -77,7 +85,7 @@ function AIMessageGenerator() {
     setError('')
     setVariants([])
     try {
-      const result = await callClaude(offer.trim(), language)
+      const result = await callAI(offer.trim(), language, aiModel)
       setVariants(result)
     } catch (err) {
       setError('⚠️ Could not reach AI — showing demo messages.')
@@ -94,7 +102,7 @@ function AIMessageGenerator() {
         <span className="cc-card__icon">🤖</span>
         <div>
           <h2 className="cc-card__title">AI Message Generator</h2>
-          <p className="cc-card__subtitle">Generate 3 WhatsApp message variants with Claude AI</p>
+          <p className="cc-card__subtitle">Generate 3 WhatsApp variants — compare across AI models</p>
         </div>
       </div>
 
@@ -125,13 +133,28 @@ function AIMessageGenerator() {
           </div>
         </div>
 
+        <div className="cc-field">
+          <label className="cc-label">AI Model</label>
+          <div className="cc-lang-row">
+            {AI_MODELS.map(m => (
+              <button
+                key={m.id}
+                className={`campaign-option cc-model-option ${aiModel === m.id ? 'campaign-option--selected' : ''}`}
+                onClick={() => { setAiModel(m.id); setVariants([]); setError('') }}
+              >
+                {m.emoji} {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <button
           className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
           onClick={handleGenerate}
           disabled={loading || !offer.trim()}
           id="generate-messages-btn"
         >
-          {loading ? <><span className="spinner" /> Generating...</> : '✨ Generate Messages'}
+          {loading ? <><span className="spinner" /> Generating with {activeModelLabel}...</> : `✨ Generate with ${activeModelLabel}`}
         </button>
 
         {error && <p className="cc-error">{error}</p>}

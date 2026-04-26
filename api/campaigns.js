@@ -63,15 +63,11 @@ export default async function handler(req, res) {
         }
 
         case 'generate-ai': {
-          // Server-side Claude call — avoids browser CORS restrictions
-          const { offer, language } = req.body
+          // Server-side AI call — avoids browser CORS restrictions
+          const { offer, language, aiModel = 'claude-opus' } = req.body
           if (!offer) return res.status(400).json({ error: 'offer is required' })
 
-          const apiKey = process.env.ANTHROPIC_API_KEY
-          if (!apiKey) {
-            // Return demo variants so the UI never breaks
-            return res.json({ variants: getAIDemoVariants(offer) })
-          }
+          const userContent = `Offer: ${offer}\nLanguage: ${language || 'English'}\n\nGenerate 3 WhatsApp message variants (Formal, Friendly, Fun).`
 
           const systemPrompt =
             'You are an expert WhatsApp marketing copywriter for The Groomers, a premium unisex salon in Nashik.\n' +
@@ -89,43 +85,79 @@ export default async function handler(req, res) {
             'Return ONLY a valid JSON array, no markdown:\n' +
             '[{"style":"Formal","emoji":"🎩","text":"..."},{"style":"Friendly","emoji":"😊","text":"..."},{"style":"Fun","emoji":"🎉","text":"..."}]'
 
-          const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify({
-              model: 'claude-opus-4-5',
-              max_tokens: 1000,
-              system: systemPrompt,
-              messages: [
-                {
-                  role: 'user',
-                  content: `Offer: ${offer}\nLanguage: ${language || 'English'}\n\nGenerate 3 WhatsApp message variants (Formal, Friendly, Fun).`,
-                },
-              ],
-            }),
-          })
+          let raw = ''
 
-          if (!claudeRes.ok) {
-            const errText = await claudeRes.text()
-            console.error('Claude API error:', claudeRes.status, errText)
-            return res.status(502).json({ error: 'Claude API error', variants: getAIDemoVariants(offer) })
+          // ── Claude Opus ─────────────────────────────────────
+          if (aiModel === 'claude-opus') {
+            const apiKey = process.env.ANTHROPIC_API_KEY
+            if (!apiKey) return res.json({ variants: getAIDemoVariants(offer) })
+
+            const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+              },
+              body: JSON.stringify({
+                model: 'claude-opus-4-5',
+                max_tokens: 1000,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userContent }],
+              }),
+            })
+            if (!aiRes.ok) {
+              console.error('Claude error:', aiRes.status, await aiRes.text())
+              return res.json({ variants: getAIDemoVariants(offer) })
+            }
+            const d = await aiRes.json()
+            raw = d.content?.[0]?.text || ''
           }
 
-          const claudeData = await claudeRes.json()
-          const raw = claudeData.content?.[0]?.text || ''
+          // ── OpenAI GPT-4o / GPT-4o mini ─────────────────────
+          else if (aiModel === 'gpt-4o' || aiModel === 'gpt-4o-mini') {
+            const apiKey = process.env.OPENAI_API_KEY
+            if (!apiKey) return res.json({ variants: getAIDemoVariants(offer) })
+
+            const openaiModel = aiModel === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o'
+            const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model: openaiModel,
+                max_tokens: 1000,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userContent },
+                ],
+              }),
+            })
+            if (!aiRes.ok) {
+              console.error('OpenAI error:', aiRes.status, await aiRes.text())
+              return res.json({ variants: getAIDemoVariants(offer) })
+            }
+            const d = await aiRes.json()
+            raw = d.choices?.[0]?.message?.content || ''
+          }
+
+          else {
+            return res.status(400).json({ error: `Unknown aiModel: ${aiModel}` })
+          }
+
+          // ── Parse response (same shape for both providers) ──
           try {
             const clean = raw.replace(/```json|```/g, '').trim()
             const variants = JSON.parse(clean)
             return res.json({ variants })
           } catch {
-            console.error('Failed to parse Claude response:', raw)
+            console.error('Failed to parse AI response:', raw)
             return res.json({ variants: getAIDemoVariants(offer) })
           }
         }
+
 
         default:
           return res.status(400).json({ error: `Unknown POST action: ${action}` })
