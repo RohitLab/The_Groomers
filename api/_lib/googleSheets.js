@@ -278,44 +278,52 @@ export function getDefaultSettings() {
 
 export async function saveToGoogleContacts(customer) {
   try {
-    const auth = getGoogleAuth([
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/contacts',
-    ])
-    if (!auth) {
-      console.warn('Google Contacts: auth not available, skipping')
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN
+
+    // Skip silently if not yet configured — owner must complete OAuth setup first
+    if (!refreshToken) {
+      console.log('Google Contacts: GOOGLE_REFRESH_TOKEN not set, skipping')
       return false
     }
 
-    const people = google.people({ version: 'v1', auth })
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      'https://the-groomers.vercel.app/api/auth/callback'
+    )
+
+    oauth2Client.setCredentials({ refresh_token: refreshToken })
+
+    const people = google.people({ version: 'v1', auth: oauth2Client })
+
+    const phone = customer.phone || ''
+    const e164Phone = phone.startsWith('+91') ? phone : '+91' + phone
 
     await people.people.createContact({
       requestBody: {
-        names: [{ givenName: customer.name }],
+        names: [{
+          givenName: customer.name,
+          displayName: customer.name,
+        }],
         phoneNumbers: [{
-          value: '+91' + customer.phone,
+          value: e164Phone,
           type: 'mobile',
         }],
-        emailAddresses: [{ value: customer.email || '' }],
+        ...(customer.email ? { emailAddresses: [{ value: customer.email, type: 'home' }] } : {}),
         organizations: [{
-          name: 'The Groomers Customer',
+          name: 'The Grommers Customer',
           title: customer.gender || '',
         }],
         biographies: [{
-          value: `Salon Customer | Tag: ${customer.tag} | Gender: ${customer.gender || ''} | Joined: ${customer.firstVisit}`,
+          value: `Salon Customer\nTag: ${customer.tag || 'New'}\nGender: ${customer.gender || ''}\nVisits: ${customer.visits || 1}\nJoined: ${customer.firstVisit}`,
         }],
-        userDefined: [
-          { key: 'Phone', value: customer.phone },
-          { key: 'Tag', value: customer.tag || '' },
-          { key: 'Gender', value: customer.gender || '' },
-        ],
       },
     })
 
     console.log('Google Contact created for:', customer.name)
     return true
   } catch (err) {
-    // Non-fatal — don't block customer registration if Contacts sync fails
+    // Non-fatal — never block customer registration if Contacts sync fails
     console.error('Google Contacts sync failed:', err.message)
     return false
   }

@@ -69,12 +69,15 @@ export default async function handler(req, res) {
             totalCashback: 0,
           }
 
-          const [success] = await Promise.all([
-            appendCustomer(customer),
-            saveToGoogleContacts(customer),
-          ])
-          if (success) return res.json({ success: true, customer })
-          return res.status(500).json({ error: 'Failed to save customer' })
+          const success = await appendCustomer(customer)
+          if (!success) return res.status(500).json({ error: 'Failed to save customer' })
+
+          // Non-blocking: sync to Google Contacts in background — never delays response
+          saveToGoogleContacts(customer)
+            .then(ok => { if (ok) console.log('Contact synced:', customer.name) })
+            .catch(err => console.error('Contact sync error:', err.message))
+
+          return res.json({ success: true, customer })
         }
 
         case 'update': {

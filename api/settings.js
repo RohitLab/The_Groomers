@@ -9,7 +9,10 @@ export default async function handler(req, res) {
       switch (action) {
         case 'get': {
           const settings = await getSettings()
-          return res.json({ settings })
+          return res.json({
+            settings,
+            contactsConnected: !!process.env.GOOGLE_REFRESH_TOKEN,
+          })
         }
 
         default:
