@@ -32,7 +32,7 @@ export default function PinGate() {
   return (
     <div className="pin-gate">
       <div className="glass-card glass-card--elevated pin-gate__card anim-float-in">
-        <img src="/logo.svg" alt="The Grommers" style={{ width: 40, height: 40, margin: '0 auto var(--space-4)', display: 'block', opacity: 0.7 }} />
+        <img src="/logo.svg" alt="The Groomers" style={{ width: '200px', height: 'auto', margin: '0 auto var(--space-5)', display: 'block' }} />
         <h1 className="pin-gate__title">Owner Dashboard</h1>
         <p className="pin-gate__desc">Enter your 4-digit PIN to continue</p>
 

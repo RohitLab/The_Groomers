@@ -28,10 +28,13 @@ function ScanContent() {
         {[...Array(8)].map((_, i) => <div key={i} className="particle" />)}
       </div>
 
-      {/* Logo & title */}
-      <img src="/logo.svg" alt="The Grommers" className="scan-page__logo anim-fade-up" />
-      <h1 className="scan-page__title anim-fade-up delay-1">The Grommers</h1>
-      <p className="scan-page__subtitle anim-fade-up delay-2">Unisex Salon</p>
+      {/* Brand logo */}
+      <img
+        src="/logo.svg"
+        alt="The Groomers Unisex Salon"
+        className="scan-page__logo anim-fade-up"
+        style={{ width: '260px', height: 'auto', marginBottom: 'var(--space-4)' }}
+      />
 
       {/* Main content */}
       <div className="scan-container">

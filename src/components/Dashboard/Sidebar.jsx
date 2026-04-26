@@ -13,8 +13,7 @@ export default function Sidebar() {
   return (
     <aside className="dashboard-sidebar">
       <div className="sidebar__logo">
-        <img src="/logo.svg" alt="Logo" />
-        <span className="sidebar__logo-text">The Grommers</span>
+        <img src="/logo.svg" alt="The Groomers" style={{ width: '100%', height: 'auto', maxWidth: '180px' }} />
       </div>
 
       <nav className="sidebar__nav">
