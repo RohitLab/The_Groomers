@@ -1,7 +1,7 @@
 import { useScanner } from '../../context/ScannerContext'
 
 export default function BillInput() {
-  const { billAmount, setBillAmount, cashbackAmount, settings, submitBill, loading } = useScanner()
+  const { billAmount, setBillAmount, cashbackAmount, activeCashbackPercent, settings, submitBill, loading, isReturning } = useScanner()
   const bill = parseFloat(billAmount) || 0
   const isValid = bill >= settings.minBill
 
@@ -41,7 +41,7 @@ export default function BillInput() {
       )}
 
       <p className="bill-min-notice">
-        {settings.cashbackPercent}% cashback on bills above ₹{settings.minBill}
+        {isReturning ? '🔁 Returning customer' : '🆕 New customer'} — {activeCashbackPercent}% cashback on bills above ₹{settings.minBill}
         {settings.maxCashback ? ` • Max ₹${settings.maxCashback}` : ''}
       </p>
 

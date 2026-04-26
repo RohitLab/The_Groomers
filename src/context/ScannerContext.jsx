@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { api } from '../utils/api'
 
 const ScannerContext = createContext(null)
@@ -14,6 +14,7 @@ export function ScannerProvider({ children }) {
   const [error, setError] = useState(null)
   const [settings, setSettings] = useState({
     cashbackPercent: 5,
+    newCustomerCashbackPercent: 10,
     minBill: 100,
     maxCashback: 500,
     salonName: 'The Grommers',
@@ -21,6 +22,16 @@ export function ScannerProvider({ children }) {
     facebookUrl: 'https://facebook.com/thegrommers',
     googleReviewUrl: 'https://g.page/thegrommers/review',
   })
+
+  // Fetch live settings from API on mount
+  useEffect(() => {
+    fetch('/api/settings?action=get')
+      .then(r => r.json())
+      .then(data => {
+        if (data.settings) setSettings(s => ({ ...s, ...data.settings }))
+      })
+      .catch(() => { /* use defaults */ })
+  }, [])
 
   // Form data for new customers
   const [formData, setFormData] = useState({
@@ -88,10 +99,15 @@ export function ScannerProvider({ children }) {
     }
   }, [phone, billAmount, isReturning])
 
+  // Pick the right rate: new customers get newCustomerCashbackPercent, regulars get cashbackPercent
+  const activeCashbackPercent = isReturning
+    ? (settings.cashbackPercent || 5)
+    : (settings.newCustomerCashbackPercent || settings.cashbackPercent || 10)
+
   const cashbackAmount = (() => {
     const bill = parseFloat(billAmount) || 0
     if (bill < settings.minBill) return 0
-    const cb = (bill * settings.cashbackPercent) / 100
+    const cb = (bill * activeCashbackPercent) / 100
     return settings.maxCashback ? Math.min(cb, settings.maxCashback) : cb
   })()
 
@@ -109,7 +125,7 @@ export function ScannerProvider({ children }) {
     <ScannerContext.Provider value={{
       step, setStep, phone, setPhone, isReturning, customer,
       loading, error, formData, setFormData, billAmount, setBillAmount,
-      cashbackAmount, settings, lookupPhone, submitRegistration, submitBill, reset,
+      cashbackAmount, activeCashbackPercent, settings, lookupPhone, submitRegistration, submitBill, reset,
     }}>
       {children}
     </ScannerContext.Provider>

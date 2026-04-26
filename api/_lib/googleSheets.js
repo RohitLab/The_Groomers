@@ -267,6 +267,7 @@ export function getDefaultSettings() {
   return {
     salonName: 'The Grommers',
     cashbackPercent: 5,
+    newCustomerCashbackPercent: 10,
     minBill: 100,
     maxCashback: 500,
     instagramUrl: 'https://instagram.com/thegrommers',

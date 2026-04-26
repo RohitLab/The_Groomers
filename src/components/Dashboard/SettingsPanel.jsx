@@ -6,7 +6,10 @@ const API = import.meta.env.VITE_API_URL || ''
 
 export default function SettingsPanel() {
   const { settings, saveSettings } = useDashboard()
-  const [local, setLocal] = useState({ ...settings })
+  const [local, setLocal] = useState({
+    newCustomerCashbackPercent: 10,
+    ...settings,
+  })
   const [saved, setSaved] = useState(false)
   const [contactsConnected, setContactsConnected] = useState(null) // null = loading
   const [syncing, setSyncing] = useState(false)
@@ -81,13 +84,43 @@ export default function SettingsPanel() {
         {/* Cashback Config */}
         <div className="glass-card settings-section">
           <h3 className="settings-section__title">Cashback Configuration</h3>
+
+          {/* New Customer Rate */}
           <div className="settings-field">
-            <label>Cashback Percentage</label>
+            <label>
+              🆕 New Customer Cashback %
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 400, marginLeft: '8px' }}>
+                (1st time visitors)
+              </span>
+            </label>
             <div className="settings-slider">
-              <input type="range" min="1" max="20" value={local.cashbackPercent} onChange={e => update('cashbackPercent', Number(e.target.value))} />
+              <input
+                type="range" min="1" max="30"
+                value={local.newCustomerCashbackPercent ?? 10}
+                onChange={e => update('newCustomerCashbackPercent', Number(e.target.value))}
+              />
+              <span className="settings-slider__value">{local.newCustomerCashbackPercent ?? 10}%</span>
+            </div>
+          </div>
+
+          {/* Regular Customer Rate */}
+          <div className="settings-field">
+            <label>
+              🔁 Regular Customer Cashback %
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 400, marginLeft: '8px' }}>
+                (returning visitors)
+              </span>
+            </label>
+            <div className="settings-slider">
+              <input
+                type="range" min="1" max="20"
+                value={local.cashbackPercent}
+                onChange={e => update('cashbackPercent', Number(e.target.value))}
+              />
               <span className="settings-slider__value">{local.cashbackPercent}%</span>
             </div>
           </div>
+
           <div className="settings-field">
             <label>Minimum Bill Amount (₹)</label>
             <input className="glass-input" type="number" value={local.minBill} onChange={e => update('minBill', Number(e.target.value))} />

@@ -13,6 +13,7 @@ export function DashboardProvider({ children }) {
   const [settings, setSettings] = useState({
     salonName: 'The Grommers',
     cashbackPercent: 5,
+    newCustomerCashbackPercent: 10,
     minBill: 100,
     maxCashback: 500,
     instagramUrl: 'https://www.instagram.com/thegroomerss/',
