@@ -9,6 +9,8 @@ export default function SettingsPanel() {
   const [local, setLocal] = useState({ ...settings })
   const [saved, setSaved] = useState(false)
   const [contactsConnected, setContactsConnected] = useState(null) // null = loading
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(null) // null | { ok: bool, message: string }
 
   const update = (field, value) => {
     setLocal(s => ({ ...s, [field]: value }))
@@ -30,6 +32,24 @@ export default function SettingsPanel() {
       .then(data => setContactsConnected(!!data.contactsConnected))
       .catch(() => setContactsConnected(false))
   }, [])
+
+  const handleSyncContacts = async () => {
+    if (!contactsConnected) {
+      setSyncStatus({ ok: false, message: 'Please connect Google Contacts first in the section above.' })
+      return
+    }
+    setSyncing(true)
+    setSyncStatus({ ok: true, message: '⏳ Syncing… this may take up to a minute for large lists.' })
+    try {
+      const res = await fetch(`${API}/api/settings?action=sync-contacts`, { method: 'POST' })
+      const data = await res.json()
+      setSyncStatus({ ok: data.success !== false, message: data.message || 'Sync complete.' })
+    } catch {
+      setSyncStatus({ ok: false, message: '❌ Sync failed — please try again.' })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <div>
@@ -159,6 +179,58 @@ export default function SettingsPanel() {
               </code>{' '}
               → Redeploy.
             </p>
+          )}
+        </div>
+
+        {/* Sync All Customers to Google Contacts */}
+        <div className="glass-card settings-section">
+          <h3 className="settings-section__title">🔄 Sync All Customers to Google Contacts</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)', marginBottom: '16px', lineHeight: 1.6 }}>
+            Reads every customer from your Google Sheet and adds only <strong style={{ color: 'var(--color-text)' }}>new ones</strong> to your Google Contacts.
+            Existing contacts are never duplicated — phone numbers are compared before adding.
+          </p>
+
+          <button
+            id="sync-contacts-btn"
+            onClick={handleSyncContacts}
+            disabled={syncing}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '10px',
+              padding: '11px 22px', borderRadius: '10px',
+              background: syncing
+                ? 'rgba(255,255,255,0.06)'
+                : 'linear-gradient(135deg, #34A853, #1a7a38)',
+              border: syncing ? '1px solid rgba(255,255,255,0.1)' : 'none',
+              color: syncing ? 'var(--color-text-muted)' : 'white',
+              fontWeight: 600, fontSize: 'var(--font-size-sm)',
+              cursor: syncing ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s',
+              opacity: syncing ? 0.7 : 1,
+            }}
+            onMouseOver={e => { if (!syncing) e.currentTarget.style.opacity = '0.85' }}
+            onMouseOut={e => { e.currentTarget.style.opacity = syncing ? '0.7' : '1' }}
+          >
+            {syncing ? (
+              <>
+                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
+                Syncing…
+              </>
+            ) : '📱 Sync New Customers to Google Contacts'}
+          </button>
+
+          {syncStatus && (
+            <div style={{
+              marginTop: '14px',
+              padding: '12px 16px',
+              background: syncStatus.ok ? 'rgba(52,168,83,0.1)' : 'rgba(244,67,54,0.1)',
+              border: `1px solid ${syncStatus.ok ? 'rgba(52,168,83,0.3)' : 'rgba(244,67,54,0.3)'}`,
+              borderRadius: '8px',
+              fontSize: 'var(--font-size-sm)',
+              color: syncStatus.ok ? '#81C784' : '#EF9A9A',
+              lineHeight: 1.5,
+            }}>
+              {syncStatus.message}
+            </div>
           )}
         </div>
 
