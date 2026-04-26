@@ -40,10 +40,7 @@ export default function BillInput() {
         </div>
       )}
 
-      <p className="bill-min-notice">
-        {isReturning ? '🔁 Returning customer' : '🆕 New customer'} — {activeCashbackPercent}% cashback on bills above ₹{settings.minBill}
-        {settings.maxCashback ? ` • Max ₹${settings.maxCashback}` : ''}
-      </p>
+
 
       <button
         id="bill-submit-btn"
