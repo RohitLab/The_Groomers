@@ -6,47 +6,19 @@ import { useDashboard } from '../../context/DashboardContext'
 ───────────────────────────────────────────────────────────────── */
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
-const SYSTEM_PROMPT = `You are a WhatsApp marketing expert for an Indian unisex salon called The Groomers. Generate 3 short attractive WhatsApp broadcast messages in the requested language. Each under 200 words. Include emojis. End with salon URL: the-groomers.vercel.app/scan
-
-Return ONLY a valid JSON array (no markdown, no extra text) in this exact format:
-[
-  { "style": "Formal", "emoji": "🎩", "text": "..." },
-  { "style": "Friendly", "emoji": "😊", "text": "..." },
-  { "style": "Fun", "emoji": "🎉", "text": "..." }
-]`
-
+// Server-side proxy — avoids browser CORS restrictions with Anthropic API
 async function callClaude(offer, language) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('NO_KEY')
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/campaigns?action=generate-ai', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1200,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Offer: ${offer}\nLanguage: ${language}\n\nGenerate 3 WhatsApp message variants (Formal, Friendly, Fun).`,
-        },
-      ],
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ offer, language }),
   })
-
-  if (!res.ok) throw new Error(`Claude error ${res.status}`)
+  if (!res.ok) throw new Error(`Server error ${res.status}`)
   const data = await res.json()
-  const raw = data.content?.[0]?.text || ''
-  // Strip markdown code fences if present
-  const clean = raw.replace(/```json|```/g, '').trim()
-  return JSON.parse(clean)
+  if (!data.variants?.length) throw new Error('No variants returned')
+  return data.variants
 }
+
 
 function demoVariants(offer) {
   return [
@@ -108,12 +80,8 @@ function AIMessageGenerator() {
       const result = await callClaude(offer.trim(), language)
       setVariants(result)
     } catch (err) {
-      if (err.message === 'NO_KEY') {
-        setError('⚠️ VITE_ANTHROPIC_API_KEY not set — showing demo messages.')
-      } else {
-        setError('⚠️ Claude API error — showing demo messages.')
-        console.error(err)
-      }
+      setError('⚠️ Could not reach AI — showing demo messages.')
+      console.error(err)
       setVariants(demoVariants(offer.trim()))
     } finally {
       setLoading(false)
