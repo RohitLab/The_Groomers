@@ -68,3 +68,29 @@
   .onboarding, .welcome-back, .bill-section, .cashback-reward { padding: var(--space-6) var(--space-4); }
   .cashback-reward__amount { font-size: var(--font-size-4xl); }
 }
+
+/* Book appointment footer link */
+.scan-book-footer {
+  margin-top: var(--space-8);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.scan-book-footer p {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.scan-book-link {
+  color: #F5A623;
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.scan-book-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}

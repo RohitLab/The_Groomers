@@ -1,0 +1,421 @@
+/* ═══════════════════════════════════════════════════
+   BOOKING PAGE STYLES
+   ═══════════════════════════════════════════════════ */
+
+.book-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  position: relative;
+  overflow: hidden;
+}
+
+.book-wrap {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  position: relative;
+  z-index: 1;
+}
+
+.book-logo {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Form card ────────────────────────────────────── */
+.book-form-card {
+  width: 100%;
+  padding: var(--space-8);
+}
+
+.book-form-header {
+  margin-bottom: var(--space-7);
+  text-align: center;
+}
+
+.book-form-header__title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.book-form-header__sub {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* ── Form fields ──────────────────────────────────── */
+.book-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.book-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.book-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.book-req {
+  color: #F5A623;
+}
+
+.book-opt {
+  color: var(--text-tertiary);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+}
+
+.book-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.book-select option {
+  background: #2c2c2a;
+  color: #f0ede8;
+}
+
+.book-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.book-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.book-error {
+  background: rgba(255, 59, 48, 0.12);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: #FF6B6B;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.book-footer {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Success screen ───────────────────────────────── */
+.book-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.book-success__ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(245,166,35,0.25), rgba(52,199,89,0.2));
+  border: 2px solid rgba(245,166,35,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 32px rgba(245,166,35,0.2);
+}
+
+.book-success__check {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.book-success__title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.book-success__sub {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.book-success__card {
+  width: 100%;
+  padding: var(--space-6);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.book-success__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.book-success__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.book-success__label {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.book-success__value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.book-success__value--id {
+  font-family: monospace;
+  background: rgba(245,166,35,0.12);
+  color: #F5A623;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.book-success__value--accent {
+  color: #F5A623;
+}
+
+.book-success__email-note {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.book-success__btn {
+  margin-top: var(--space-2);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+}
+
+/* ═══════════════════════════════════════════════════
+   APPOINTMENTS TAB STYLES
+   ═══════════════════════════════════════════════════ */
+
+.appt-stats {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.appt-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+}
+
+.appt-stat-pill__num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.appt-stat-pill__label {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.appt-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.appt-refresh-btn {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-3);
+  font-size: 1rem;
+}
+
+.appt-loading,
+.appt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+/* ── Table ────────────────────────────────────────── */
+.appt-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+}
+
+.appt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.appt-table thead th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.appt-table tbody tr {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s;
+}
+
+.appt-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.appt-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.appt-table td {
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.appt-row--today {
+  background: rgba(0, 122, 255, 0.06) !important;
+}
+
+.appt-id {
+  font-family: monospace;
+  color: var(--text-tertiary) !important;
+  font-size: 0.8rem;
+}
+
+.appt-name {
+  font-weight: 600;
+  color: var(--text-primary) !important;
+}
+
+.appt-service {
+  color: #F5A623 !important;
+  font-weight: 500;
+  max-width: 160px;
+}
+
+/* Status badge */
+.appt-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Action buttons */
+.appt-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.appt-action-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.appt-action-btn:hover {
+  background: var(--glass-bg);
+  transform: scale(1.1);
+}
+
+.appt-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 768px) {
+  .book-form-card {
+    padding: var(--space-6);
+  }
+
+  .book-row {
+    grid-template-columns: 1fr;
+  }
+
+  .appt-table-wrap {
+    font-size: 0.8rem;
+  }
+
+  .appt-table thead th,
+  .appt-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+}

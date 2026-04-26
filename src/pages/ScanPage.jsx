@@ -46,6 +46,18 @@ function ScanContent() {
           {renderStep()}
         </motion.div>
       </div>
+
+      {/* Book appointment footer link */}
+      <motion.div
+        className="scan-book-footer"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        <p>Want to book in advance?&nbsp;
+          <a href="/book" className="scan-book-link">→ Book Appointment</a>
+        </p>
+      </motion.div>
     </motion.div>
   )
 }

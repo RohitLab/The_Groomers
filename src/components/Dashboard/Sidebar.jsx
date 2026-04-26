@@ -2,10 +2,11 @@ import { useDashboard } from '../../context/DashboardContext'
 import LogoBrand from '../LogoBrand'
 
 const NAV_ITEMS = [
-  { id: 'customers', icon: '👥', label: 'Customers' },
-  { id: 'campaigns', icon: '📢', label: 'Campaigns' },
-  { id: 'analytics', icon: '📊', label: 'Analytics' },
-  { id: 'settings', icon: '⚙️', label: 'Settings' },
+  { id: 'customers',    icon: '👥', label: 'Customers' },
+  { id: 'appointments', icon: '📅', label: 'Appointments' },
+  { id: 'campaigns',   icon: '📢', label: 'Campaigns' },
+  { id: 'analytics',   icon: '📊', label: 'Analytics' },
+  { id: 'settings',    icon: '⚙️', label: 'Settings' },
 ]
 
 export default function Sidebar() {

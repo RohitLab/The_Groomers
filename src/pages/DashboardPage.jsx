@@ -4,6 +4,7 @@ import PinGate from '../components/Dashboard/PinGate'
 import Sidebar from '../components/Dashboard/Sidebar'
 import CustomerTable from '../components/Dashboard/CustomerTable'
 import CampaignComposer from '../components/Dashboard/CampaignComposer'
+import AppointmentsTab from '../components/Dashboard/AppointmentsTab'
 import AnalyticsCards from '../components/Dashboard/AnalyticsCards'
 import SettingsPanel from '../components/Dashboard/SettingsPanel'
 
@@ -14,10 +15,11 @@ function DashboardContent() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'customers': return <CustomerTable />
-      case 'campaigns': return <CampaignComposer />
-      case 'analytics': return <AnalyticsCards />
-      case 'settings': return <SettingsPanel />
+      case 'customers':    return <CustomerTable />
+      case 'appointments': return <AppointmentsTab />
+      case 'campaigns':   return <CampaignComposer />
+      case 'analytics':   return <AnalyticsCards />
+      case 'settings':    return <SettingsPanel />
       default: return <CustomerTable />
     }
   }
@@ -39,10 +41,11 @@ function DashboardContent() {
 function MobileNav() {
   const { activeTab, setActiveTab } = useDashboard()
   const tabs = [
-    { id: 'customers', icon: '👥', label: 'Customers' },
-    { id: 'campaigns', icon: '📢', label: 'Campaigns' },
-    { id: 'analytics', icon: '📊', label: 'Analytics' },
-    { id: 'settings', icon: '⚙️', label: 'Settings' },
+    { id: 'customers',    icon: '👥', label: 'Customers' },
+    { id: 'appointments', icon: '📅', label: 'Bookings' },
+    { id: 'campaigns',   icon: '📢', label: 'Campaigns' },
+    { id: 'analytics',   icon: '📊', label: 'Analytics' },
+    { id: 'settings',    icon: '⚙️', label: 'Settings' },
   ]
   return (
     <nav className="mobile-nav">

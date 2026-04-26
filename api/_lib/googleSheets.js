@@ -329,3 +329,112 @@ export async function saveToGoogleContacts(customer) {
     return false
   }
 }
+
+// ─── APPOINTMENTS ──────────────────────────────────────────────────
+
+const APPT_SHEET = 'Appointments'
+const APPT_COLUMNS = ['BookingID', 'Name', 'Phone', 'Email', 'Service', 'Date', 'Time', 'Notes', 'Status', 'BookedAt']
+
+async function ensureAppointmentsSheet() {
+  const client = getClient()
+  if (!client) return
+  try {
+    const meta = await client.spreadsheets.get({
+      spreadsheetId: getSheetId(),
+      fields: 'sheets.properties.title',
+    })
+    const names = meta.data.sheets.map(s => s.properties.title)
+    if (!names.includes(APPT_SHEET)) {
+      await client.spreadsheets.batchUpdate({
+        spreadsheetId: getSheetId(),
+        requestBody: { requests: [{ addSheet: { properties: { title: APPT_SHEET } } }] },
+      })
+      // Write header row
+      await client.spreadsheets.values.update({
+        spreadsheetId: getSheetId(),
+        range: `${APPT_SHEET}!A1:J1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [APPT_COLUMNS] },
+      })
+    }
+  } catch (err) {
+    console.error('ensureAppointmentsSheet error:', err.message)
+  }
+}
+
+export async function saveAppointment(data) {
+  await ensureAppointmentsSheet()
+  const client = getClient()
+  if (!client) return false
+  try {
+    await client.spreadsheets.values.append({
+      spreadsheetId: getSheetId(),
+      range: `${APPT_SHEET}!A:J`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[
+          data.bookingId, data.name, data.phone, data.email,
+          data.service, data.date, data.time, data.notes,
+          data.status, data.bookedAt,
+        ]],
+      },
+    })
+    return true
+  } catch (err) {
+    console.error('saveAppointment error:', err.message)
+    return false
+  }
+}
+
+export async function getAppointments() {
+  await ensureAppointmentsSheet()
+  const client = getClient()
+  if (!client) return []
+  try {
+    const response = await client.spreadsheets.values.get({
+      spreadsheetId: getSheetId(),
+      range: `${APPT_SHEET}!A2:J`,
+    })
+    const rows = response.data.values || []
+    return rows.map(row => ({
+      bookingId: row[0] || '',
+      name:      row[1] || '',
+      phone:     row[2] || '',
+      email:     row[3] || '',
+      service:   row[4] || '',
+      date:      row[5] || '',
+      time:      row[6] || '',
+      notes:     row[7] || '',
+      status:    row[8] || 'Pending',
+      bookedAt:  row[9] || '',
+    }))
+  } catch (err) {
+    console.error('getAppointments error:', err.message)
+    return []
+  }
+}
+
+export async function updateAppointmentStatus(bookingId, status) {
+  const client = getClient()
+  if (!client) return false
+  try {
+    const response = await client.spreadsheets.values.get({
+      spreadsheetId: getSheetId(),
+      range: `${APPT_SHEET}!A:A`,
+    })
+    const rows = response.data.values || []
+    const rowIndex = rows.findIndex(row => row[0] === bookingId)
+    if (rowIndex === -1) return false
+
+    await client.spreadsheets.values.update({
+      spreadsheetId: getSheetId(),
+      range: `${APPT_SHEET}!I${rowIndex + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[status]] },
+    })
+    return true
+  } catch (err) {
+    console.error('updateAppointmentStatus error:', err.message)
+    return false
+  }
+}
