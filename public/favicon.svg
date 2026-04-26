@@ -1,16 +1,14 @@
+<!-- Favicon: TG monogram, warm gray background, white text, gold underline -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Background square with rounded corners -->
-  <rect width="64" height="64" rx="12" fill="#4a4a4a"/>
-  <!-- "TG" monogram in white -->
+  <rect width="64" height="64" rx="10" fill="#666560"/>
   <text
-    x="32" y="38"
+    x="32" y="40"
     text-anchor="middle"
     fill="#FFFFFF"
     font-family="'Arial Black', 'Arial', sans-serif"
-    font-size="28"
+    font-size="30"
     font-weight="900"
     letter-spacing="-1"
   >TG</text>
-  <!-- Gold accent underline -->
-  <rect x="12" y="46" width="40" height="3" rx="1.5" fill="#F5A623"/>
+  <rect x="10" y="48" width="44" height="3" rx="1.5" fill="#F5A623"/>
 </svg>

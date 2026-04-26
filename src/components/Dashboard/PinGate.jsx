@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
+import LogoBrand from '../LogoBrand'
 
 export default function PinGate() {
   const { verifyPin } = useDashboard()
@@ -32,7 +33,9 @@ export default function PinGate() {
   return (
     <div className="pin-gate">
       <div className="glass-card glass-card--elevated pin-gate__card anim-float-in">
-        <img src="/logo.svg" alt="The Groomers" style={{ width: '200px', height: 'auto', margin: '0 auto var(--space-5)', display: 'block' }} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-5)' }}>
+          <LogoBrand size="medium" />
+        </div>
         <h1 className="pin-gate__title">Owner Dashboard</h1>
         <p className="pin-gate__desc">Enter your 4-digit PIN to continue</p>
 

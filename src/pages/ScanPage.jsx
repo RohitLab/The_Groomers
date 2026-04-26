@@ -5,6 +5,7 @@ import OnboardingForm from '../components/Scanner/OnboardingForm'
 import WelcomeBack from '../components/Scanner/WelcomeBack'
 import BillInput from '../components/Scanner/BillInput'
 import CashbackReward from '../components/Scanner/CashbackReward'
+import LogoBrand from '../components/LogoBrand'
 
 function ScanContent() {
   const { step } = useScanner()
@@ -29,12 +30,9 @@ function ScanContent() {
       </div>
 
       {/* Brand logo */}
-      <img
-        src="/logo.svg"
-        alt="The Groomers Unisex Salon"
-        className="scan-page__logo anim-fade-up"
-        style={{ width: '260px', height: 'auto', marginBottom: 'var(--space-4)' }}
-      />
+      <div className="anim-fade-up" style={{ marginBottom: 'var(--space-6)' }}>
+        <LogoBrand size="large" />
+      </div>
 
       {/* Main content */}
       <div className="scan-container">

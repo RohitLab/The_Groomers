@@ -1,4 +1,5 @@
 import { useDashboard } from '../../context/DashboardContext'
+import LogoBrand from '../LogoBrand'
 
 const NAV_ITEMS = [
   { id: 'customers', icon: '👥', label: 'Customers' },
@@ -13,7 +14,7 @@ export default function Sidebar() {
   return (
     <aside className="dashboard-sidebar">
       <div className="sidebar__logo">
-        <img src="/logo.svg" alt="The Groomers" style={{ width: '100%', height: 'auto', maxWidth: '180px' }} />
+        <LogoBrand size="medium" />
       </div>
 
       <nav className="sidebar__nav">
