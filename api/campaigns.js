@@ -16,26 +16,39 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     // ── generate-ai: handled outside try/catch so real errors surface ──
     if (action === 'generate-ai') {
-      const { offer, language, aiModel = 'claude-opus' } = req.body
+      const { offer, language } = req.body
       if (!offer) return res.status(400).json({ error: 'offer is required' })
 
-      const prompt = `You are a WhatsApp marketing expert for The Groomers unisex salon in Nashik India.
+      const apiKey = process.env.GEMINI_API_KEY
+      if (!apiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY not configured' })
+      }
 
-Write 3 completely different WhatsApp messages for this offer: "${offer}"
+      const prompt = `You are a WhatsApp marketing expert 
+for The Groomers, a premium unisex salon in Nashik, India.
+
+Write 3 completely different WhatsApp broadcast messages 
+for this offer: "${offer}"
 Language: ${language || 'English'}
 
-FORMAL: Start with the main benefit. Professional warm tone. 1-2 emojis. 80-100 words.
+FORMAL: Professional and warm. Start directly with 
+the offer benefit. 1-2 emojis. 80-100 words.
 
-FRIENDLY: Like texting a close friend. Indian casual tone. 3-4 emojis. 60-80 words.
+FRIENDLY: Like texting a close friend. Indian casual 
+tone. Natural Hinglish if language is Hinglish. 
+3-4 emojis. 60-80 words.
 
-FUN: All caps key words. Super energetic. Short punchy sentences. 5+ emojis. 40-60 words.
+FUN: Super energetic. Bold. Short punchy sentences. 
+ALL CAPS for key words. 5+ emojis. 40-60 words.
 
 Every message must:
-- Have a completely unique opening line
-- Mention specific urgency
+- Have completely unique opening line
+- Include urgency (this weekend / limited slots / today only)
+- Mention The Groomers Nashik naturally
 - End with: 👉 the-groomers.vercel.app/scan
 
-Reply with ONLY valid JSON, no markdown, no extra text:
+Reply with ONLY this exact JSON, no markdown, 
+no extra text, no backticks:
 {
   "variants": [
     {"style": "Formal", "emoji": "🎩", "text": "..."},
@@ -44,68 +57,34 @@ Reply with ONLY valid JSON, no markdown, no extra text:
   ]
 }`
 
-      // ── Claude ────────────────────────────────────────────
-      if (aiModel === 'claude-opus') {
-        const apiKey = process.env.ANTHROPIC_KEY
-        if (!apiKey) {
-          return res.status(500).json({ error: 'ANTHROPIC_KEY not configured in environment' })
-        }
-
-        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 1000,
-            messages: [{ role: 'user', content: prompt }],
-          }),
-        })
-
-        const claudeData = await claudeRes.json()
-        if (claudeData.error) {
-          return res.status(500).json({ error: claudeData.error.message || 'Claude API error' })
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.9,
+              maxOutputTokens: 1000
+            }
+          })
         }
+      )
 
-        const text = claudeData.content[0].text.trim()
-        const parsed = JSON.parse(text)
-        return res.status(200).json(parsed)
+      const geminiData = await geminiRes.json()
+
+      if (geminiData.error) {
+        return res.status(500).json({ error: geminiData.error.message || 'Gemini API error' })
       }
 
-      // ── OpenAI GPT-4o / GPT-4o mini ──────────────────────
-      if (aiModel === 'gpt-4o' || aiModel === 'gpt-4o-mini') {
-        const apiKey = process.env.OPENAI_API_KEY
-        if (!apiKey) {
-          return res.status(500).json({ error: 'OPENAI_API_KEY not configured in environment' })
-        }
+      let text = geminiData.candidates[0].content.parts[0].text.trim()
 
-        const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: aiModel,
-            max_tokens: 1000,
-            messages: [{ role: 'user', content: prompt }],
-          }),
-        })
+      // Clean any markdown backticks if present
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
-        const openaiData = await openaiRes.json()
-        if (openaiData.error) {
-          return res.status(500).json({ error: openaiData.error.message || 'OpenAI API error' })
-        }
-
-        const text = openaiData.choices[0].message.content.trim()
-        const parsed = JSON.parse(text)
-        return res.status(200).json(parsed)
-      }
-
-      return res.status(400).json({ error: `Unknown aiModel: ${aiModel}` })
+      const parsed = JSON.parse(text)
+      return res.status(200).json(parsed)
     }
 
     // ── Other POST actions ────────────────────────────────
