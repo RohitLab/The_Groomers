@@ -8,21 +8,27 @@ const SHEET_NAME = 'Customers'
 const SETTINGS_SHEET = 'Settings'
 const COLUMNS = ['phone', 'name', 'email', 'instagramFollowed', 'facebookFollowed', 'googleReview', 'cashbackAmount', 'visits', 'firstVisit', 'lastVisit', 'tag', 'billAmount', 'cashbackEarned', 'cashbackPercent', 'totalCashback', 'gender']
 
-function getClient() {
-  if (sheetsClient) return sheetsClient
+function getGoogleAuth(scopes) {
   const creds = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
   if (!creds) return null
-
   try {
     const parsed = JSON.parse(creds)
-    const auth = new google.auth.GoogleAuth({
-      credentials: parsed,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })
+    return new google.auth.GoogleAuth({ credentials: parsed, scopes })
+  } catch (err) {
+    console.error('Google auth error:', err.message)
+    return null
+  }
+}
+
+function getClient() {
+  if (sheetsClient) return sheetsClient
+  try {
+    const auth = getGoogleAuth(['https://www.googleapis.com/auth/spreadsheets'])
+    if (!auth) return null
     sheetsClient = google.sheets({ version: 'v4', auth })
     return sheetsClient
   } catch (err) {
-    console.error('Google Sheets auth error:', err.message)
+    console.error('Google Sheets client error:', err.message)
     return null
   }
 }
@@ -267,5 +273,50 @@ export function getDefaultSettings() {
     facebookUrl: 'https://facebook.com/thegrommers',
     googleReviewUrl: 'https://g.page/thegrommers/review',
     whatsappNumber: '',
+  }
+}
+
+export async function saveToGoogleContacts(customer) {
+  try {
+    const auth = getGoogleAuth([
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/contacts',
+    ])
+    if (!auth) {
+      console.warn('Google Contacts: auth not available, skipping')
+      return false
+    }
+
+    const people = google.people({ version: 'v1', auth })
+
+    await people.people.createContact({
+      requestBody: {
+        names: [{ givenName: customer.name }],
+        phoneNumbers: [{
+          value: '+91' + customer.phone,
+          type: 'mobile',
+        }],
+        emailAddresses: [{ value: customer.email || '' }],
+        organizations: [{
+          name: 'The Groomers Customer',
+          title: customer.gender || '',
+        }],
+        biographies: [{
+          value: `Salon Customer | Tag: ${customer.tag} | Gender: ${customer.gender || ''} | Joined: ${customer.firstVisit}`,
+        }],
+        userDefined: [
+          { key: 'Phone', value: customer.phone },
+          { key: 'Tag', value: customer.tag || '' },
+          { key: 'Gender', value: customer.gender || '' },
+        ],
+      },
+    })
+
+    console.log('Google Contact created for:', customer.name)
+    return true
+  } catch (err) {
+    // Non-fatal — don't block customer registration if Contacts sync fails
+    console.error('Google Contacts sync failed:', err.message)
+    return false
   }
 }

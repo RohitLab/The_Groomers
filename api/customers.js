@@ -4,6 +4,7 @@ import {
   updateCustomer,
   getAllCustomers,
   getSettings,
+  saveToGoogleContacts,
 } from './_lib/googleSheets.js'
 
 export default async function handler(req, res) {
@@ -68,7 +69,10 @@ export default async function handler(req, res) {
             totalCashback: 0,
           }
 
-          const success = await appendCustomer(customer)
+          const [success] = await Promise.all([
+            appendCustomer(customer),
+            saveToGoogleContacts(customer),
+          ])
           if (success) return res.json({ success: true, customer })
           return res.status(500).json({ error: 'Failed to save customer' })
         }
