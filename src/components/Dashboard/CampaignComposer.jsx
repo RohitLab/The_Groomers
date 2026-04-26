@@ -15,8 +15,8 @@ async function callAI(offer, language) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ offer, language }),
   })
-  if (!res.ok) throw new Error(`Server error ${res.status}`)
   const data = await res.json()
+  if (!res.ok || data.error) throw new Error(data.error || `Server error ${res.status}`)
   if (!data.variants?.length) throw new Error('No variants returned')
   return data.variants
 }
@@ -82,9 +82,8 @@ function AIMessageGenerator() {
       const result = await callAI(offer.trim(), language)
       setVariants(result)
     } catch (err) {
-      setError('⚠️ Could not reach AI — showing demo messages.')
+      setError(`⚠️ ${err.message || 'Could not reach Gemini API'}`)
       console.error(err)
-      setVariants(demoVariants(offer.trim()))
     } finally {
       setLoading(false)
     }
@@ -96,7 +95,7 @@ function AIMessageGenerator() {
         <span className="cc-card__icon">🤖</span>
         <div>
           <h2 className="cc-card__title">AI Message Generator</h2>
-          <p className="cc-card__subtitle">Generate 3 WhatsApp message variants with Google Gemini AI</p>
+          <p className="cc-card__subtitle">Generate 3 WhatsApp message variants powered by Google Gemini AI ⚡</p>
         </div>
       </div>
 
