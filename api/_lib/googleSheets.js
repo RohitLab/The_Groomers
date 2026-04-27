@@ -396,18 +396,21 @@ export async function getAppointments() {
       range: `${APPT_SHEET}!A2:J`,
     })
     const rows = response.data.values || []
-    return rows.map(row => ({
-      bookingId: row[0] || '',
-      name:      row[1] || '',
-      phone:     row[2] || '',
-      email:     row[3] || '',
-      service:   row[4] || '',
-      date:      row[5] || '',
-      time:      row[6] || '',
-      notes:     row[7] || '',
-      status:    row[8] || 'Pending',
-      bookedAt:  row[9] || '',
-    }))
+    return rows
+      // Defensive: skip any row that looks like a header (in case sheet was manually set up)
+      .filter(row => row[0] && row[0].toString().toLowerCase() !== 'bookingid')
+      .map(row => ({
+        bookingId: row[0] || '',
+        name:      row[1] || '',
+        phone:     row[2] || '',
+        email:     row[3] || '',
+        service:   row[4] || '',
+        date:      row[5] || '',
+        time:      row[6] || '',
+        notes:     row[7] || '',
+        status:    row[8] || 'Pending',
+        bookedAt:  row[9] || '',
+      }))
   } catch (err) {
     console.error('getAppointments error:', err.message)
     return []
@@ -418,11 +421,13 @@ export async function updateAppointmentStatus(bookingId, status) {
   const client = getClient()
   if (!client) return false
   try {
+    // Read from A1 (including header) so rowIndex is the true 1-based sheet row
     const response = await client.spreadsheets.values.get({
       spreadsheetId: getSheetId(),
       range: `${APPT_SHEET}!A:A`,
     })
     const rows = response.data.values || []
+    // findIndex returns 0-based; row 0 = header (A1), so sheetRow = rowIndex + 1
     const rowIndex = rows.findIndex(row => row[0] === bookingId)
     if (rowIndex === -1) return false
 

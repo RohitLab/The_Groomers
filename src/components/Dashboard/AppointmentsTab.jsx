@@ -86,16 +86,30 @@ export default function AppointmentsTab() {
 
   const filtered = useMemo(() => {
     switch (filter) {
-      case 'Pending':   return appointments.filter(a => a.status === 'Pending')
-      case 'Confirmed': return appointments.filter(a => a.status === 'Confirmed')
-      case 'today':     return appointments.filter(a => a.date === today)
-      default:          return appointments
+      case 'Pending':
+        return appointments.filter(a =>
+          !a.status || a.status.toLowerCase() === 'pending'
+        )
+      case 'Confirmed':
+        return appointments.filter(a => a.status === 'Confirmed')
+      case 'today':
+        return appointments.filter(a => {
+          if (!a.date) return false
+          return a.date === today || a.date.includes(today)
+        })
+      default:
+        return appointments
     }
   }, [appointments, filter, today])
 
-  const pendingCount   = appointments.filter(a => a.status === 'Pending').length
-  const todayCount     = appointments.filter(a => a.date === today).length
-  const totalCount     = appointments.length
+  const pendingCount = appointments.filter(
+    a => a.status === 'Pending' || a.status === 'pending' || !a.status
+  ).length
+  const todayCount = appointments.filter(a => {
+    if (!a.date) return false
+    return a.date === today || a.date.includes(today)
+  }).length
+  const totalCount = appointments.length
 
   return (
     <div>
