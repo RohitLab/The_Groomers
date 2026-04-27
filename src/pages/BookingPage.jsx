@@ -105,16 +105,14 @@ function SuccessScreen({ booking }) {
         </div>
       </motion.div>
 
-      {booking.email && (
-        <motion.p
-          className="book-success__email-note"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-        >
-          📧 Check your email for confirmation
-        </motion.p>
-      )}
+      <motion.p
+        className="book-success__email-note"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7 }}
+      >
+        📧 Check your email for confirmation
+      </motion.p>
 
       <motion.a
         href="/scan"
@@ -155,6 +153,10 @@ export default function BookingPage() {
     }
     if (!effectiveService.trim()) {
       setError('Please select or describe your service.')
+      return
+    }
+    if (!form.email.trim()) {
+      setError('Please enter your email address so we can send you a confirmation.')
       return
     }
 
@@ -249,13 +251,14 @@ export default function BookingPage() {
 
                 {/* Email */}
                 <div className="book-field">
-                  <label className="book-label">Email ID <span className="book-opt">(optional)</span></label>
+                  <label className="book-label">Email ID <span className="book-req">*</span></label>
                   <input
                     className="glass-input"
                     type="email"
                     placeholder="you@example.com"
                     value={form.email}
                     onChange={set('email')}
+                    required
                   />
                 </div>
 
