@@ -1,14 +1,33 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 
 /* ─────────────────────────────────────────────────────────────────
-   FEATURE 1 — AI MESSAGE GENERATOR
+   CONSTANTS
 ───────────────────────────────────────────────────────────────── */
 const LANGUAGES = ['English', 'Hindi', 'Hinglish']
 
+const EMAIL_FILTERS = [
+  { id: 'all',      label: '👥 All Customers' },
+  { id: 'female',   label: '👩 Female' },
+  { id: 'male',     label: '👨 Male' },
+  { id: 'VIP',      label: '⭐ VIP Only' },
+  { id: 'inactive', label: '💤 Inactive (30+ days)' },
+]
 
+const WHATSAPP_FILTER_OPTIONS = [
+  { id: 'all',        label: 'All' },
+  { id: 'male',       label: 'Male' },
+  { id: 'female',     label: 'Female' },
+  { id: 'VIP',        label: 'VIP' },
+  { id: 'Regular',    label: 'Regular' },
+  { id: 'New',        label: 'New' },
+  { id: 'inactive30', label: 'Last visit > 30 days' },
+  { id: 'inactive60', label: 'Last visit > 60 days' },
+]
 
-// Server-side proxy — avoids browser CORS restrictions
+/* ─────────────────────────────────────────────────────────────────
+   SERVER HELPERS
+───────────────────────────────────────────────────────────────── */
 async function callAI(offer, language) {
   const res = await fetch('/api/campaigns?action=generate-ai', {
     method: 'POST',
@@ -21,25 +40,21 @@ async function callAI(offer, language) {
   return data.variants
 }
 
-
-function demoVariants(offer) {
-  return [
-    {
-      style: 'Formal', emoji: '🎩',
-      text: `Dear Valued Guest,\n\nWe're delighted to present an exclusive offer at The Groomers — ${offer}.\n\nWe warmly invite you to experience our world-class grooming services.\n\n📍 Book your appointment today!\n🌐 the-groomers.vercel.app/scan\n\nWarm regards,\nThe Groomers Unisex Salon`,
-    },
-    {
-      style: 'Friendly', emoji: '😊',
-      text: `Hey! 👋\n\nGreat news from The Groomers! ✨\n${offer} 🎁\n\nWe'd love to pamper you — come on in!\n\n💇 Book your slot today.\n🔗 the-groomers.vercel.app/scan\n\nSee you soon! 😊`,
-    },
-    {
-      style: 'Fun', emoji: '🎉',
-      text: `🚨 BIG OFFER ALERT 🚨\n\n${offer} 💥💥\n\nYou NEED this, trust us! 💇‍♀️💇‍♂️✨\n\nDon't sleep on it — slots are flying! 🏃‍♂️💨\n\n👉 the-groomers.vercel.app/scan\n\n#TheGroomers #GlowUp #SalonLife`,
-    },
-  ]
+async function callAIEmail(offer) {
+  const res = await fetch('/api/campaigns?action=generate-ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ offer, mode: 'email' }),
+  })
+  const data = await res.json()
+  if (!res.ok || data.error) throw new Error(data.error || `Server error ${res.status}`)
+  return data // { subject, body }
 }
 
-function MessageCard({ variant, index }) {
+/* ─────────────────────────────────────────────────────────────────
+   WHATSAPP — MessageCard
+───────────────────────────────────────────────────────────────── */
+function MessageCard({ variant }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -66,6 +81,9 @@ function MessageCard({ variant, index }) {
   )
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   WHATSAPP — AI Message Generator
+───────────────────────────────────────────────────────────────── */
 function AIMessageGenerator() {
   const [offer, setOffer] = useState('')
   const [language, setLanguage] = useState('English')
@@ -83,7 +101,6 @@ function AIMessageGenerator() {
       setVariants(result)
     } catch (err) {
       setError(`⚠️ ${err.message || 'Could not reach Gemini API'}`)
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -126,8 +143,6 @@ function AIMessageGenerator() {
           </div>
         </div>
 
-
-
         <button
           className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
           onClick={handleGenerate}
@@ -143,7 +158,7 @@ function AIMessageGenerator() {
           <div className="cc-variants anim-fade-up">
             <p className="cc-variants__label">Choose &amp; copy a message variant:</p>
             {variants.map((v, i) => (
-              <MessageCard key={i} variant={v} index={i} />
+              <MessageCard key={i} variant={v} />
             ))}
           </div>
         )}
@@ -153,19 +168,8 @@ function AIMessageGenerator() {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   FEATURE 2 — EXPORT CUSTOMER NUMBERS
+   WHATSAPP — Export Customer Numbers
 ───────────────────────────────────────────────────────────────── */
-const FILTER_OPTIONS = [
-  { id: 'all',     label: 'All' },
-  { id: 'male',    label: 'Male' },
-  { id: 'female',  label: 'Female' },
-  { id: 'VIP',     label: 'VIP' },
-  { id: 'Regular', label: 'Regular' },
-  { id: 'New',     label: 'New' },
-  { id: 'inactive30', label: 'Last visit > 30 days' },
-  { id: 'inactive60', label: 'Last visit > 60 days' },
-]
-
 function daysSinceLastVisit(customer) {
   const last = customer.lastVisit || customer.firstVisit
   if (!last) return 999
@@ -224,7 +228,7 @@ function ExportCustomerNumbers() {
         <div className="cc-field">
           <label className="cc-label">Filter customers</label>
           <div className="cc-filter-grid">
-            {FILTER_OPTIONS.map(f => (
+            {WHATSAPP_FILTER_OPTIONS.map(f => (
               <button
                 key={f.id}
                 className={`campaign-option ${activeFilter === f.id ? 'campaign-option--selected' : ''}`}
@@ -259,19 +263,291 @@ function ExportCustomerNumbers() {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   EMAIL CAMPAIGN COMPOSER
+───────────────────────────────────────────────────────────────── */
+function EmailCampaign() {
+  const [emailSubject, setEmailSubject]     = useState('')
+  const [emailMessage, setEmailMessage]     = useState('')
+  const [emailFilter, setEmailFilter]       = useState('all')
+  const [emailSending, setEmailSending]     = useState(false)
+  const [emailResult, setEmailResult]       = useState(null)
+  const [recipientCount, setRecipientCount] = useState(null)
+  const [countLoading, setCountLoading]     = useState(false)
+  const [aiLoading, setAiLoading]           = useState(false)
+  const [aiOffer, setAiOffer]               = useState('')
+  const [aiError, setAiError]               = useState('')
+  const [showAiPanel, setShowAiPanel]       = useState(false)
+
+  // Fetch recipient count whenever the filter changes
+  const fetchCount = useCallback(async (filter) => {
+    setCountLoading(true)
+    try {
+      const res = await fetch('/api/campaigns?action=count-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filter }),
+      })
+      const data = await res.json()
+      setRecipientCount(data.count ?? 0)
+    } catch {
+      setRecipientCount(null)
+    } finally {
+      setCountLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCount(emailFilter)
+  }, [emailFilter, fetchCount])
+
+  // AI email generation
+  const handleGenerateEmail = async () => {
+    if (!aiOffer.trim()) return
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const data = await callAIEmail(aiOffer.trim())
+      if (data.subject) setEmailSubject(data.subject)
+      if (data.body)    setEmailMessage(data.body)
+      setShowAiPanel(false)
+      setAiOffer('')
+    } catch (err) {
+      setAiError(`⚠️ ${err.message || 'Could not reach Gemini API'}`)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  // Send campaign
+  const handleSendEmailCampaign = async () => {
+    if (!emailSubject || !emailMessage) return
+    const confirmed = window.confirm(
+      `Send email campaign to ${recipientCount ?? '?'} customers with email addresses?\n\nSubject: ${emailSubject}`
+    )
+    if (!confirmed) return
+
+    setEmailSending(true)
+    setEmailResult(null)
+    try {
+      const res = await fetch('/api/campaigns?action=send-email-campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: emailSubject,
+          message: emailMessage,
+          filter: emailFilter,
+          previewText: emailSubject,
+        }),
+      })
+      const data = await res.json()
+      setEmailResult(data)
+    } catch {
+      setEmailResult({ message: '❌ Failed to send. Please try again.' })
+    } finally {
+      setEmailSending(false)
+    }
+  }
+
+  const emailMessagePlaceholder = `Write your offer message here...
+
+You can use:
+- Emojis 🎉 ✨ 💇‍♀️
+- *bold text* with asterisks
+- Line breaks for spacing
+
+Example:
+We have an amazing offer just for you! 🌟
+
+*20% OFF* on all hair services this weekend only.
+
+Valid: Saturday & Sunday, 10 AM – 7 PM
+Slots are limited — book yours now! 🗓️`
+
+  return (
+    <div className="cc-card glass-card">
+      <div className="cc-card__header">
+        <span className="cc-card__icon">📧</span>
+        <div>
+          <h2 className="cc-card__title">Email Campaign</h2>
+          <p className="cc-card__subtitle">Send personalised bulk emails to your customers via Resend</p>
+        </div>
+      </div>
+
+      <div className="cc-card__body">
+
+        {/* ── AI Panel (collapsible) ── */}
+        <div className={`ec-ai-panel glass-card glass-card--subtle ${showAiPanel ? 'ec-ai-panel--open' : ''}`}>
+          <button
+            className="ec-ai-toggle"
+            onClick={() => setShowAiPanel(v => !v)}
+          >
+            <span>✨ Generate email content with Gemini AI</span>
+            <span className="ec-ai-toggle__arrow">{showAiPanel ? '▲' : '▼'}</span>
+          </button>
+
+          {showAiPanel && (
+            <div className="ec-ai-body anim-fade-up">
+              <label className="cc-label">Describe your offer</label>
+              <textarea
+                className="glass-input cc-textarea"
+                rows={2}
+                placeholder="e.g. 20% off on all hair services this weekend"
+                value={aiOffer}
+                onChange={e => setAiOffer(e.target.value)}
+              />
+              <button
+                className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+                onClick={handleGenerateEmail}
+                disabled={aiLoading || !aiOffer.trim()}
+                id="generate-email-ai-btn"
+              >
+                {aiLoading ? <><span className="spinner" /> Generating...</> : '✨ Generate Subject & Body'}
+              </button>
+              {aiError && <p className="cc-error">{aiError}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* ── Subject ── */}
+        <div className="cc-field">
+          <label className="cc-label" htmlFor="ec-subject">Email Subject</label>
+          <input
+            id="ec-subject"
+            className="glass-input"
+            value={emailSubject}
+            onChange={e => setEmailSubject(e.target.value)}
+            placeholder="e.g. 🎉 Special Weekend Offer from The Groomers!"
+          />
+        </div>
+
+        {/* ── Message ── */}
+        <div className="cc-field">
+          <label className="cc-label" htmlFor="ec-message">Message Body</label>
+          <textarea
+            id="ec-message"
+            className="glass-input cc-textarea"
+            rows={9}
+            value={emailMessage}
+            onChange={e => setEmailMessage(e.target.value)}
+            placeholder={emailMessagePlaceholder}
+          />
+          <p className="cc-export-hint" style={{ marginTop: '6px' }}>
+            Use <code>*asterisks*</code> for <strong>bold</strong>. Greeting (Hi [Name] 👋) and footer are added automatically.
+          </p>
+        </div>
+
+        {/* ── Filter chips ── */}
+        <div className="cc-field">
+          <label className="cc-label">Send To</label>
+          <div className="ec-filter-chips">
+            {EMAIL_FILTERS.map(f => (
+              <button
+                key={f.id}
+                className={`ec-chip ${emailFilter === f.id ? 'ec-chip--active' : ''}`}
+                onClick={() => setEmailFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Recipient count ── */}
+        <div className="ec-recipient-count glass-card glass-card--subtle">
+          {countLoading ? (
+            <span className="ec-count-loading"><span className="spinner spinner--sm" /> Counting…</span>
+          ) : recipientCount !== null ? (
+            <>
+              <span className="cc-export-count__number">{recipientCount}</span>
+              <span className="cc-export-count__text">
+                customer{recipientCount !== 1 ? 's' : ''} with email addresses
+              </span>
+            </>
+          ) : (
+            <span className="cc-export-count__text">—</span>
+          )}
+        </div>
+
+        {/* ── Send button ── */}
+        <button
+          className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+          onClick={handleSendEmailCampaign}
+          disabled={emailSending || !emailSubject.trim() || !emailMessage.trim() || recipientCount === 0}
+          id="send-email-campaign-btn"
+          style={{ marginTop: '8px' }}
+        >
+          {emailSending
+            ? <><span className="spinner" /> Sending emails…</>
+            : `📧 Send Email Campaign`}
+        </button>
+
+        {/* ── Result banner ── */}
+        {emailResult && (
+          <div className={`ec-result anim-fade-up ${emailResult.success ? 'ec-result--success' : 'ec-result--error'}`}>
+            <p className="ec-result__msg">{emailResult.message}</p>
+            {emailResult.success && (
+              <p className="ec-result__detail">
+                {emailResult.sent} sent · {emailResult.failed} failed · {emailResult.total} total
+              </p>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   TAB WRAPPER — WhatsApp view
+───────────────────────────────────────────────────────────────── */
+function WhatsAppTab() {
+  return (
+    <div className="cc-layout">
+      <AIMessageGenerator />
+      <ExportCustomerNumbers />
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────
    MAIN EXPORT
 ───────────────────────────────────────────────────────────────── */
+const TABS = [
+  { id: 'whatsapp', label: '📱 WhatsApp Message' },
+  { id: 'email',    label: '📧 Email Campaign' },
+]
+
 export default function CampaignComposer() {
+  const [activeTab, setActiveTab] = useState('whatsapp')
+
   return (
     <div>
       <div className="dashboard-header">
         <h1 className="dashboard-header__title">Campaign Composer</h1>
       </div>
 
-      <div className="cc-layout">
-        <AIMessageGenerator />
-        <ExportCustomerNumbers />
+      {/* ── Tab bar ── */}
+      <div className="cc-tabs">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            className={`cc-tab ${activeTab === tab.id ? 'cc-tab--active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+            id={`campaign-tab-${tab.id}`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* ── Tab panels ── */}
+      {activeTab === 'whatsapp' && <WhatsAppTab />}
+      {activeTab === 'email'    && (
+        <div className="cc-layout cc-layout--single">
+          <EmailCampaign />
+        </div>
+      )}
     </div>
   )
 }

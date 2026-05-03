@@ -48,7 +48,6 @@
 .message-edit-area:focus { border-color: rgba(241,239,232,0.3); outline: none; }
 
 /* ── Campaign Composer v2 — Two-Card Layout ── */
-.cc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
 .cc-card { padding: var(--space-6); display: flex; flex-direction: column; gap: 0; }
 .cc-card__header { display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-6); }
 .cc-card__icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
@@ -104,6 +103,41 @@
 .pin-key--action { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .pin-error { color: var(--color-error); font-size: var(--font-size-sm); margin-top: var(--space-4); }
 
+/* ── Campaign Tabs ── */
+.cc-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); padding: 4px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); width: fit-content; }
+.cc-tab { padding: var(--space-2) var(--space-5); border-radius: calc(var(--radius-lg) - 3px); font-size: var(--font-size-sm); font-weight: var(--font-medium); color: var(--color-text-secondary); background: transparent; border: none; cursor: pointer; transition: all var(--duration-fast) var(--ease-out); white-space: nowrap; }
+.cc-tab:hover { color: var(--color-text-primary); background: rgba(255,255,255,0.05); }
+.cc-tab--active { background: rgba(241,239,232,0.12); color: var(--color-cream); border: 1px solid rgba(241,239,232,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+/* ── cc-layout modifier: single-column ── */
+.cc-layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
+.cc-layout--single { grid-template-columns: 1fr; max-width: 680px; }
+
+/* ── Email Campaign — AI Panel ── */
+.ec-ai-panel { padding: 0; overflow: hidden; border-radius: var(--radius-md); margin-bottom: var(--space-1); }
+.ec-ai-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); background: transparent; border: none; cursor: pointer; font-size: var(--font-size-sm); font-weight: var(--font-medium); color: var(--color-text-secondary); transition: color var(--duration-fast) var(--ease-out); }
+.ec-ai-toggle:hover { color: var(--color-text-primary); }
+.ec-ai-toggle__arrow { font-size: var(--font-size-xs); opacity: 0.6; }
+.ec-ai-panel--open .ec-ai-toggle { color: var(--color-cream); }
+.ec-ai-body { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+
+/* ── Email Campaign — Filter Chips ── */
+.ec-filter-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ec-chip { padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: var(--font-medium); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); color: var(--color-text-secondary); }
+.ec-chip:hover { background: rgba(255,255,255,0.08); color: var(--color-text-primary); }
+.ec-chip--active { background: rgba(241,239,232,0.14); border-color: rgba(241,239,232,0.28); color: var(--color-cream); }
+
+/* ── Email Campaign — Recipient Count Row ── */
+.ec-recipient-count { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); }
+.ec-count-loading { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+/* ── Email Campaign — Result Banner ── */
+.ec-result { padding: var(--space-4) var(--space-5); border-radius: var(--radius-md); }
+.ec-result--success { background: rgba(80,200,120,0.10); border: 1px solid rgba(80,200,120,0.22); }
+.ec-result--error   { background: rgba(232,100,100,0.10); border: 1px solid rgba(232,100,100,0.22); }
+.ec-result__msg  { font-size: var(--font-size-sm); font-weight: var(--font-medium); margin: 0 0 var(--space-1); }
+.ec-result__detail { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: 0; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .dashboard-sidebar { display: none; }
@@ -115,5 +149,7 @@
   .analytics-grid { grid-template-columns: repeat(2, 1fr); }
   .settings-grid { grid-template-columns: 1fr; }
   .cc-layout { grid-template-columns: 1fr; }
+  .cc-tabs { width: 100%; }
+  .cc-tab { flex: 1; text-align: center; }
 }
 @media (min-width: 769px) { .mobile-nav { display: none; } }
