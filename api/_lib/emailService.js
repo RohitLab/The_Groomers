@@ -2,10 +2,9 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-// RESEND_FROM_EMAIL must be set to a verified domain sender e.g.:
-//   bookings@yourdomain.com  or  noreply@yourdomain.com
-// The test address (onboarding@resend.dev) can ONLY send to the Resend account owner email.
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+// RESEND_FROM_EMAIL can be overridden via env var.
+// Default is the verified thegroomers.shop domain sender.
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bookings@thegroomers.shop'
 
 export async function sendEmail({ to, subject, html }) {
   if (!process.env.RESEND_API_KEY) {

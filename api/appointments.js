@@ -48,7 +48,7 @@ export default async function handler(req, res) {
             <tr><td style="padding:8px 0;color:#888">Notes</td><td style="padding:8px 0;color:#2c2c2a">${notes || 'None'}</td></tr>
           </table>
           <div style="margin-top:20px;padding:12px;background:#2c2c2a;border-radius:8px;text-align:center">
-            <a href="https://the-groomers.vercel.app/dashboard" style="color:#F5A623;text-decoration:none;font-weight:600">View in Dashboard →</a>
+            <a href="https://thegroomers.shop/dashboard" style="color:#F5A623;text-decoration:none;font-weight:600">View in Dashboard →</a>
           </div>
         </div>
       `,
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
             </div>
             <p style="color:#555;font-size:13px">📍 The Groomers Unisex Salon, Nashik<br>📱 For queries contact us on WhatsApp</p>
             <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #e0ddd6">
-              <p style="color:#888;font-size:11px">Scan our QR for loyalty rewards<br>the-groomers.vercel.app/scan</p>
+              <p style="color:#888;font-size:11px">Scan our QR for loyalty rewards<br>thegroomers.shop/scan</p>
             </div>
           </div>
         `,

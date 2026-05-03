@@ -1,6 +1,6 @@
 import { google } from 'googleapis'
 
-const REDIRECT_URI = 'https://the-groomers.vercel.app/api/auth/callback'
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://thegroomers.shop/api/auth/callback'
 
 export default async function handler(req, res) {
   const { code, error } = req.query

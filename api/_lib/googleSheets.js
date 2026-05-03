@@ -290,7 +290,7 @@ export async function saveToGoogleContacts(customer) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      'https://the-groomers.vercel.app/api/auth/callback'
+      process.env.GOOGLE_REDIRECT_URI || 'https://thegroomers.shop/api/auth/callback'
     )
 
     oauth2Client.setCredentials({ refresh_token: refreshToken })
