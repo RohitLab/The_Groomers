@@ -376,6 +376,167 @@ no extra text, no backticks:
           })
         }
 
+        // ── agent-write: Gemini generates full email campaign package ──
+        case 'agent-write': {
+          const { brief, language, tone, audience } = req.body
+          if (!brief) return res.status(400).json({ error: 'brief is required' })
+
+          const apiKey = process.env.GEMINI_API_KEY
+          if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' })
+
+          const agentPrompt = `You are email marketing agent for The Groomers, a premium unisex salon in Nashik India.
+
+Owner's brief: "${brief}"
+Language: ${language || 'English'}
+Tone: ${tone || 'friendly'}
+Audience: ${audience || 'all'}
+
+You are a professional email marketing copywriter for The Groomers, a premium unisex salon in Nashik, India.
+Create campaigns that:
+1. Land in Gmail Primary inbox (not Promotions)
+2. Feel personal and conversational
+3. Drive bookings and visits
+4. Work for Indian audience
+5. Use emojis naturally
+
+Generate a complete email campaign. Return ONLY this exact JSON, no markdown, no backticks:
+{
+  "subject": "catchy subject with emoji, max 60 chars",
+  "previewText": "preview text under 90 chars",
+  "emailBody": "full email body with emojis and line breaks, 100-150 words, do NOT include Hi [Name] greeting",
+  "whatsappVersion": "shorter WhatsApp version under 80 words",
+  "variants": {
+    "formal": "formal email body without greeting",
+    "friendly": "friendly email body without greeting",
+    "fun": "fun energetic email body without greeting"
+  },
+  "bestTime": "Best time to send this campaign (e.g. Tuesday 10am)",
+  "expectedOpenRate": "estimated open rate tip (e.g. 28-35% expected for time-sensitive offers)"
+}`
+
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: agentPrompt }] }],
+                generationConfig: { temperature: 0.9, maxOutputTokens: 1200 }
+              })
+            }
+          )
+
+          const agentData = await geminiRes.json()
+          if (agentData.error) {
+            return res.status(500).json({ error: agentData.error.message || 'Gemini API error' })
+          }
+
+          let agentText = agentData.candidates[0].content.parts[0].text.trim()
+          agentText = agentText.replace(/```json/g, '').replace(/```/g, '').trim()
+          const agentParsed = JSON.parse(agentText)
+          return res.status(200).json(agentParsed)
+        }
+
+        // ── agent-send: validate, preview, or send campaign ──────────
+        case 'agent-send': {
+          const { subject, emailBody, previewText, filter, previewOnly } = req.body
+
+          if (!subject || !emailBody) {
+            return res.status(400).json({ error: 'subject and emailBody are required' })
+          }
+
+          // Step 1: Get and filter customers
+          let customers = await getAllCustomers()
+          customers = applyFilter(customers, filter)
+
+          // Step 2: Validate and deduplicate emails
+          const seen = new Set()
+          const totalWithEmail = customers.filter(c => c.email && c.email.includes('@')).length
+          let duplicateCount = 0
+          let invalidCount = 0
+
+          const validCustomers = []
+          customers.forEach(c => {
+            if (!c.email || !c.email.includes('@')) {
+              invalidCount++
+              return
+            }
+            const key = c.email.toLowerCase()
+            if (seen.has(key)) {
+              duplicateCount++
+              return
+            }
+            seen.add(key)
+            validCustomers.push(c)
+          })
+
+          if (validCustomers.length === 0) {
+            return res.status(400).json({
+              error: 'No valid email addresses found',
+              tip: 'Ask customers to register via QR scan to collect emails'
+            })
+          }
+
+          // Preview mode — return recipient list only, do not send
+          if (previewOnly) {
+            return res.status(200).json({
+              recipients: validCustomers.map(c => ({
+                name: c.name || 'Unknown',
+                email: c.email,
+                tag: c.tag || '—'
+              })),
+              stats: {
+                total: customers.length,
+                valid: validCustomers.length,
+                invalid: invalidCount,
+                duplicates: duplicateCount
+              }
+            })
+          }
+
+          // Step 3: Send emails
+          let sent = 0
+          let failed = 0
+          const failedEmails = []
+
+          for (const customer of validCustomers) {
+            const personalizedBody = emailBody
+              .replace('[Name]', customer.name || 'there')
+              .replace('{name}', customer.name || 'there')
+
+            const html = generateEmailHTML({
+              customerName: customer.name || 'Valued Customer',
+              message: personalizedBody,
+              previewText: previewText || subject
+            })
+
+            const ok = await sendEmail({ to: customer.email, subject, html })
+
+            if (ok) {
+              sent++
+            } else {
+              failed++
+              failedEmails.push(customer.email)
+            }
+
+            // 200ms delay to respect rate limits
+            await new Promise(r => setTimeout(r, 200))
+          }
+
+          // Step 4: Return detailed report
+          return res.status(200).json({
+            success: true,
+            report: {
+              totalCustomers: customers.length,
+              withEmail: validCustomers.length,
+              sent,
+              failed,
+              failedEmails,
+              message: `✅ Campaign sent! ${sent} delivered${failed > 0 ? `, ${failed} failed` : ''}`
+            }
+          })
+        }
+
         default:
           return res.status(400).json({ error: `Unknown POST action: ${action}` })
       }

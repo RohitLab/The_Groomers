@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 
 /* ─────────────────────────────────────────────────────────────────
@@ -263,237 +263,451 @@ function ExportCustomerNumbers() {
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   EMAIL CAMPAIGN COMPOSER
+   2-AGENT EMAIL CAMPAIGN WIZARD
+   Step 1: Agent 1 writes   →  Step 2: Agent 2 previews  →  Step 3: Send & Report
 ───────────────────────────────────────────────────────────────── */
-function EmailCampaign() {
-  const [emailSubject, setEmailSubject]     = useState('')
-  const [emailMessage, setEmailMessage]     = useState('')
-  const [emailFilter, setEmailFilter]       = useState('all')
-  const [emailSending, setEmailSending]     = useState(false)
-  const [emailResult, setEmailResult]       = useState(null)
-  const [recipientCount, setRecipientCount] = useState(null)
-  const [countLoading, setCountLoading]     = useState(false)
-  const [aiLoading, setAiLoading]           = useState(false)
-  const [aiOffer, setAiOffer]               = useState('')
-  const [aiError, setAiError]               = useState('')
-  const [showAiPanel, setShowAiPanel]       = useState(false)
 
-  // Fetch recipient count whenever the filter changes
-  const fetchCount = useCallback(async (filter) => {
-    setCountLoading(true)
+const TONES = [
+  { id: 'friendly', label: '😊 Friendly' },
+  { id: 'formal',   label: '🎩 Formal' },
+  { id: 'fun',      label: '🎉 Fun' },
+]
+
+const AGENT_AUDIENCE = [
+  { id: 'all',      label: '👥 All' },
+  { id: 'female',   label: '👩 Female' },
+  { id: 'male',     label: '👨 Male' },
+  { id: 'VIP',      label: '⭐ VIP' },
+  { id: 'inactive', label: '💤 Inactive' },
+]
+
+const VARIANT_KEYS = ['friendly', 'formal', 'fun']
+const VARIANT_LABELS = { friendly: '😊 Friendly', formal: '🎩 Formal', fun: '🎉 Fun' }
+
+// Step indicator
+function AgentStepper({ step }) {
+  const steps = [
+    { n: 1, icon: '✍️', label: 'Write' },
+    { n: 2, icon: '👁',  label: 'Preview' },
+    { n: 3, icon: '🚀', label: 'Send' },
+  ]
+  return (
+    <div className="ea-stepper">
+      {steps.map((s, i) => (
+        <div key={s.n} className="ea-stepper__item">
+          <div className={`ea-step ${step === s.n ? 'ea-step--active' : ''} ${step > s.n ? 'ea-step--done' : ''}`}>
+            {step > s.n ? '✓' : s.icon}
+          </div>
+          <span className={`ea-step__label ${step === s.n ? 'ea-step__label--active' : ''}`}>{s.label}</span>
+          {i < steps.length - 1 && <div className={`ea-step__line ${step > s.n ? 'ea-step__line--done' : ''}`} />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AgentEmailCampaign() {
+  const [step, setStep] = useState(1)
+
+  // Step 1 state
+  const [brief,    setBrief]    = useState('')
+  const [language, setLanguage] = useState('English')
+  const [tone,     setTone]     = useState('friendly')
+  const [audience, setAudience] = useState('all')
+  const [writing,  setWriting]  = useState(false)
+  const [writeErr, setWriteErr] = useState('')
+
+  // Generated content
+  const [subject,      setSubject]      = useState('')
+  const [previewText,  setPreviewText]  = useState('')
+  const [emailBody,    setEmailBody]    = useState('')
+  const [variants,     setVariants]     = useState({})
+  const [activeVariant, setActiveVariant] = useState('friendly')
+  const [bestTime,     setBestTime]     = useState('')
+  const [openRate,     setOpenRate]     = useState('')
+
+  // Step 2 state
+  const [previewing,   setPreviewing]   = useState(false)
+  const [previewErr,   setPreviewErr]   = useState('')
+  const [recipients,   setRecipients]   = useState([])
+  const [recStats,     setRecStats]     = useState(null)
+
+  // Step 3 state
+  const [sending,  setSending]  = useState(false)
+  const [sendErr,  setSendErr]  = useState('')
+  const [report,   setReport]   = useState(null)
+
+  /* ── Agent 1: Write ── */
+  const handleGenerate = async () => {
+    if (!brief.trim()) return
+    setWriting(true)
+    setWriteErr('')
     try {
-      const res = await fetch('/api/campaigns?action=count-emails', {
+      const res = await fetch('/api/campaigns?action=agent-write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filter }),
+        body: JSON.stringify({ brief: brief.trim(), language, tone, audience }),
       })
       const data = await res.json()
-      setRecipientCount(data.count ?? 0)
-    } catch {
-      setRecipientCount(null)
-    } finally {
-      setCountLoading(false)
-    }
-  }, [])
+      if (!res.ok || data.error) throw new Error(data.error || `Server error ${res.status}`)
 
-  useEffect(() => {
-    fetchCount(emailFilter)
-  }, [emailFilter, fetchCount])
-
-  // AI email generation
-  const handleGenerateEmail = async () => {
-    if (!aiOffer.trim()) return
-    setAiLoading(true)
-    setAiError('')
-    try {
-      const data = await callAIEmail(aiOffer.trim())
-      if (data.subject) setEmailSubject(data.subject)
-      if (data.body)    setEmailMessage(data.body)
-      setShowAiPanel(false)
-      setAiOffer('')
+      setSubject(data.subject || '')
+      setPreviewText(data.previewText || '')
+      setEmailBody(data.emailBody || '')
+      setVariants(data.variants || {})
+      setBestTime(data.bestTime || '')
+      setOpenRate(data.expectedOpenRate || '')
+      setActiveVariant(tone) // default active tab = chosen tone
     } catch (err) {
-      setAiError(`⚠️ ${err.message || 'Could not reach Gemini API'}`)
+      setWriteErr(`⚠️ ${err.message || 'Could not reach Gemini API'}`)
     } finally {
-      setAiLoading(false)
+      setWriting(false)
     }
   }
 
-  // Send campaign
-  const handleSendEmailCampaign = async () => {
-    if (!emailSubject || !emailMessage) return
-    const confirmed = window.confirm(
-      `Send email campaign to ${recipientCount ?? '?'} customers with email addresses?\n\nSubject: ${emailSubject}`
-    )
-    if (!confirmed) return
+  // When variant tab changes, update emailBody to that variant's content
+  const handleVariantSwitch = (key) => {
+    setActiveVariant(key)
+    if (variants[key]) setEmailBody(variants[key])
+  }
 
-    setEmailSending(true)
-    setEmailResult(null)
+  /* ── Agent 2: Preview ── */
+  const handlePreview = async () => {
+    setPreviewing(true)
+    setPreviewErr('')
     try {
-      const res = await fetch('/api/campaigns?action=send-email-campaign', {
+      const res = await fetch('/api/campaigns?action=agent-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: emailSubject,
-          message: emailMessage,
-          filter: emailFilter,
-          previewText: emailSubject,
-        }),
+        body: JSON.stringify({ subject, emailBody, previewText, filter: audience, previewOnly: true }),
       })
       const data = await res.json()
-      setEmailResult(data)
-    } catch {
-      setEmailResult({ message: '❌ Failed to send. Please try again.' })
+      if (!res.ok || data.error) throw new Error(data.error || `Server error ${res.status}`)
+      setRecipients(data.recipients || [])
+      setRecStats(data.stats || null)
+      setStep(2)
+    } catch (err) {
+      setPreviewErr(`⚠️ ${err.message || 'Could not load recipient list'}`)
     } finally {
-      setEmailSending(false)
+      setPreviewing(false)
     }
   }
 
-  const emailMessagePlaceholder = `Write your offer message here...
+  /* ── Agent 2: Send ── */
+  const handleSend = async () => {
+    setSending(true)
+    setSendErr('')
+    setStep(3)
+    try {
+      const res = await fetch('/api/campaigns?action=agent-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, emailBody, previewText, filter: audience, previewOnly: false }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Server error ${res.status}`)
+      setReport(data.report)
+    } catch (err) {
+      setSendErr(`⚠️ ${err.message || 'Failed to send campaign'}`)
+    } finally {
+      setSending(false)
+    }
+  }
 
-You can use:
-- Emojis 🎉 ✨ 💇‍♀️
-- *bold text* with asterisks
-- Line breaks for spacing
+  const handleReset = () => {
+    setStep(1); setBrief(''); setSubject(''); setPreviewText(''); setEmailBody('')
+    setVariants({}); setBestTime(''); setOpenRate(''); setReport(null); setSendErr('')
+    setWriteErr(''); setPreviewErr(''); setRecipients([]); setRecStats(null)
+  }
 
-Example:
-We have an amazing offer just for you! 🌟
+  const hasContent = subject || emailBody
 
-*20% OFF* on all hair services this weekend only.
+  /* ── Step 1 ── */
+  const renderStep1 = () => (
+    <div className="cc-card__body anim-fade-up">
+      <div className="cc-field">
+        <label className="cc-label">Describe your offer in simple words</label>
+        <textarea
+          className="glass-input cc-textarea"
+          rows={3}
+          placeholder="e.g. Monday special, 20% off on all hair services for everyone"
+          value={brief}
+          onChange={e => setBrief(e.target.value)}
+        />
+      </div>
 
-Valid: Saturday & Sunday, 10 AM – 7 PM
-Slots are limited — book yours now! 🗓️`
+      <div className="cc-field">
+        <label className="cc-label">Language</label>
+        <div className="cc-lang-row">
+          {LANGUAGES.map(lang => (
+            <button
+              key={lang}
+              className={`campaign-option ${language === lang ? 'campaign-option--selected' : ''}`}
+              onClick={() => setLanguage(lang)}
+            >{lang}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="cc-field">
+        <label className="cc-label">Tone</label>
+        <div className="cc-lang-row">
+          {TONES.map(t => (
+            <button
+              key={t.id}
+              className={`campaign-option ${tone === t.id ? 'campaign-option--selected' : ''}`}
+              onClick={() => setTone(t.id)}
+            >{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="cc-field">
+        <label className="cc-label">Audience</label>
+        <div className="cc-lang-row">
+          {AGENT_AUDIENCE.map(a => (
+            <button
+              key={a.id}
+              className={`campaign-option ${audience === a.id ? 'campaign-option--selected' : ''}`}
+              onClick={() => setAudience(a.id)}
+            >{a.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <button
+        className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+        onClick={handleGenerate}
+        disabled={writing || !brief.trim()}
+        id="agent-generate-btn"
+      >
+        {writing
+          ? <><span className="spinner" /> Agent 1 writing your campaign... ✍️</>
+          : '✨ Generate Campaign with AI'}
+      </button>
+
+      {writeErr && <p className="cc-error">{writeErr}</p>}
+
+      {/* ── Generated content ── */}
+      {hasContent && (
+        <div className="ea-generated anim-fade-up">
+          <div className="ea-divider"><span>✅ Campaign Generated</span></div>
+
+          {/* Subject */}
+          <div className="cc-field">
+            <label className="cc-label">Subject Line</label>
+            <input
+              className="glass-input"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="Subject line"
+            />
+          </div>
+
+          {/* Preview text */}
+          <div className="cc-field">
+            <label className="cc-label">Preview Text</label>
+            <input
+              className="glass-input"
+              value={previewText}
+              onChange={e => setPreviewText(e.target.value)}
+              placeholder="Preview text (shown in inbox)"
+            />
+          </div>
+
+          {/* Variant tabs */}
+          {Object.keys(variants).length > 0 && (
+            <div className="ea-variant-tabs">
+              {VARIANT_KEYS.map(key => (
+                <button
+                  key={key}
+                  className={`ea-variant-tab ${activeVariant === key ? 'ea-variant-tab--active' : ''}`}
+                  onClick={() => handleVariantSwitch(key)}
+                >
+                  {VARIANT_LABELS[key]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Email body */}
+          <div className="cc-field">
+            <label className="cc-label">Email Body</label>
+            <textarea
+              className="glass-input cc-textarea"
+              rows={8}
+              value={emailBody}
+              onChange={e => setEmailBody(e.target.value)}
+            />
+            <p className="cc-export-hint">Greeting (Hi [Name] 👋) and footer added automatically. Use *asterisks* for bold.</p>
+          </div>
+
+          {/* Tip boxes */}
+          {bestTime && (
+            <div className="ea-tip-box ea-tip-box--time">
+              💡 <strong>Best time to send:</strong> {bestTime}
+            </div>
+          )}
+          {openRate && (
+            <div className="ea-tip-box ea-tip-box--rate">
+              📊 {openRate}
+            </div>
+          )}
+
+          {previewErr && <p className="cc-error">{previewErr}</p>}
+
+          <button
+            className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+            onClick={handlePreview}
+            disabled={previewing || !subject.trim() || !emailBody.trim()}
+            id="agent-preview-btn"
+          >
+            {previewing
+              ? <><span className="spinner" /> Loading recipients...</>
+              : '👁 Preview & Send →'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+
+  /* ── Step 2 ── */
+  const renderStep2 = () => (
+    <div className="ea-preview-panel anim-fade-up">
+      <div className="ea-preview-panel__header">
+        <h3 className="ea-preview-panel__title">
+          📧 Ready to send to <span className="ea-highlight">{recStats?.valid ?? recipients.length}</span> customers
+        </h3>
+        {recStats && (
+          <div className="ea-summary-bar">
+            <span className="ea-summary-bar__item ea-summary-bar__item--ok">✅ {recStats.valid} valid</span>
+            {recStats.invalid > 0 && <span className="ea-summary-bar__item ea-summary-bar__item--warn">⚠️ {recStats.invalid} invalid</span>}
+            {recStats.duplicates > 0 && <span className="ea-summary-bar__item ea-summary-bar__item--dup">🔄 {recStats.duplicates} duplicates removed</span>}
+          </div>
+        )}
+      </div>
+
+      <div className="ea-recipient-table-wrap">
+        <table className="ea-recipient-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Tag</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recipients.map((r, i) => (
+              <tr key={i}>
+                <td className="ea-recipient-table__check">✅</td>
+                <td>{r.name}</td>
+                <td className="ea-recipient-table__email">{r.email}</td>
+                <td><span className="ea-tag">{r.tag}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="ea-preview-actions">
+        <button
+          className="glass-btn glass-btn--full"
+          onClick={() => setStep(1)}
+        >← Back to Edit</button>
+        <button
+          className="glass-btn glass-btn--primary glass-btn--full"
+          onClick={handleSend}
+          id="agent-send-btn"
+        >🚀 Send Campaign Now</button>
+      </div>
+    </div>
+  )
+
+  /* ── Step 3 ── */
+  const renderStep3 = () => (
+    <div className="anim-fade-up">
+      {sending && !report ? (
+        <div className="ea-sending-state">
+          <div className="ea-sending-spinner">
+            <span className="spinner spinner--large" />
+          </div>
+          <p className="ea-sending-label">📤 Sending emails to {recStats?.valid} customers…</p>
+          <p className="ea-sending-sub">Please keep this window open</p>
+        </div>
+      ) : sendErr ? (
+        <div className="ec-result ec-result--error">
+          <p className="ec-result__msg">{sendErr}</p>
+          <button className="glass-btn" onClick={() => setStep(2)} style={{ marginTop: '12px' }}>
+            ← Back to Preview
+          </button>
+        </div>
+      ) : report ? (
+        <div className="ea-report-card glass-card">
+          <div className="ea-report-card__header">
+            <span className="ea-report-card__icon">📊</span>
+            <h3 className="ea-report-card__title">Campaign Report</h3>
+          </div>
+          <div className="ea-report-card__body">
+            <div className="ea-report-stat ea-report-stat--sent">
+              <span className="ea-report-stat__icon">✅</span>
+              <div>
+                <span className="ea-report-stat__label">Sent</span>
+                <span className="ea-report-stat__value">{report.sent}</span>
+              </div>
+            </div>
+            <div className="ea-report-stat ea-report-stat--failed">
+              <span className="ea-report-stat__icon">❌</span>
+              <div>
+                <span className="ea-report-stat__label">Failed</span>
+                <span className="ea-report-stat__value">{report.failed}</span>
+              </div>
+            </div>
+            <div className="ea-report-stat ea-report-stat--total">
+              <span className="ea-report-stat__icon">👥</span>
+              <div>
+                <span className="ea-report-stat__label">Total</span>
+                <span className="ea-report-stat__value">{report.withEmail}</span>
+              </div>
+            </div>
+          </div>
+          <div className="ea-report-from">
+            <p className="ea-report-from__label">Sent from</p>
+            <p className="ea-report-from__addr">bookings@thegroomers.shop</p>
+          </div>
+          {report.failedEmails?.length > 0 && (
+            <p className="ea-report-failed-list">
+              Failed: {report.failedEmails.join(', ')}
+            </p>
+          )}
+          <button
+            className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
+            onClick={handleReset}
+            style={{ marginTop: '8px' }}
+            id="send-another-btn"
+          >
+            📬 Send Another Campaign
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
 
   return (
     <div className="cc-card glass-card">
       <div className="cc-card__header">
-        <span className="cc-card__icon">📧</span>
+        <span className="cc-card__icon">🤖</span>
         <div>
-          <h2 className="cc-card__title">Email Campaign</h2>
-          <p className="cc-card__subtitle">Send personalised bulk emails to your customers via Resend</p>
+          <h2 className="cc-card__title">AI Email Campaign Agent</h2>
+          <p className="cc-card__subtitle">2-agent system: Gemini writes · Resend delivers</p>
         </div>
       </div>
 
-      <div className="cc-card__body">
+      <AgentStepper step={step} />
 
-        {/* ── AI Panel (collapsible) ── */}
-        <div className={`ec-ai-panel glass-card glass-card--subtle ${showAiPanel ? 'ec-ai-panel--open' : ''}`}>
-          <button
-            className="ec-ai-toggle"
-            onClick={() => setShowAiPanel(v => !v)}
-          >
-            <span>✨ Generate email content with Gemini AI</span>
-            <span className="ec-ai-toggle__arrow">{showAiPanel ? '▲' : '▼'}</span>
-          </button>
-
-          {showAiPanel && (
-            <div className="ec-ai-body anim-fade-up">
-              <label className="cc-label">Describe your offer</label>
-              <textarea
-                className="glass-input cc-textarea"
-                rows={2}
-                placeholder="e.g. 20% off on all hair services this weekend"
-                value={aiOffer}
-                onChange={e => setAiOffer(e.target.value)}
-              />
-              <button
-                className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
-                onClick={handleGenerateEmail}
-                disabled={aiLoading || !aiOffer.trim()}
-                id="generate-email-ai-btn"
-              >
-                {aiLoading ? <><span className="spinner" /> Generating...</> : '✨ Generate Subject & Body'}
-              </button>
-              {aiError && <p className="cc-error">{aiError}</p>}
-            </div>
-          )}
-        </div>
-
-        {/* ── Subject ── */}
-        <div className="cc-field">
-          <label className="cc-label" htmlFor="ec-subject">Email Subject</label>
-          <input
-            id="ec-subject"
-            className="glass-input"
-            value={emailSubject}
-            onChange={e => setEmailSubject(e.target.value)}
-            placeholder="e.g. 🎉 Special Weekend Offer from The Groomers!"
-          />
-        </div>
-
-        {/* ── Message ── */}
-        <div className="cc-field">
-          <label className="cc-label" htmlFor="ec-message">Message Body</label>
-          <textarea
-            id="ec-message"
-            className="glass-input cc-textarea"
-            rows={9}
-            value={emailMessage}
-            onChange={e => setEmailMessage(e.target.value)}
-            placeholder={emailMessagePlaceholder}
-          />
-          <p className="cc-export-hint" style={{ marginTop: '6px' }}>
-            Use <code>*asterisks*</code> for <strong>bold</strong>. Greeting (Hi [Name] 👋) and footer are added automatically.
-          </p>
-        </div>
-
-        {/* ── Filter chips ── */}
-        <div className="cc-field">
-          <label className="cc-label">Send To</label>
-          <div className="ec-filter-chips">
-            {EMAIL_FILTERS.map(f => (
-              <button
-                key={f.id}
-                className={`ec-chip ${emailFilter === f.id ? 'ec-chip--active' : ''}`}
-                onClick={() => setEmailFilter(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Recipient count ── */}
-        <div className="ec-recipient-count glass-card glass-card--subtle">
-          {countLoading ? (
-            <span className="ec-count-loading"><span className="spinner spinner--sm" /> Counting…</span>
-          ) : recipientCount !== null ? (
-            <>
-              <span className="cc-export-count__number">{recipientCount}</span>
-              <span className="cc-export-count__text">
-                customer{recipientCount !== 1 ? 's' : ''} with email addresses
-              </span>
-            </>
-          ) : (
-            <span className="cc-export-count__text">—</span>
-          )}
-        </div>
-
-        {/* ── Send button ── */}
-        <button
-          className="glass-btn glass-btn--primary glass-btn--large glass-btn--full"
-          onClick={handleSendEmailCampaign}
-          disabled={emailSending || !emailSubject.trim() || !emailMessage.trim() || recipientCount === 0}
-          id="send-email-campaign-btn"
-          style={{ marginTop: '8px' }}
-        >
-          {emailSending
-            ? <><span className="spinner" /> Sending emails…</>
-            : `📧 Send Email Campaign`}
-        </button>
-
-        {/* ── Result banner ── */}
-        {emailResult && (
-          <div className={`ec-result anim-fade-up ${emailResult.success ? 'ec-result--success' : 'ec-result--error'}`}>
-            <p className="ec-result__msg">{emailResult.message}</p>
-            {emailResult.success && (
-              <p className="ec-result__detail">
-                {emailResult.sent} sent · {emailResult.failed} failed · {emailResult.total} total
-              </p>
-            )}
-          </div>
-        )}
-
-      </div>
+      {step === 1 && renderStep1()}
+      {step === 2 && renderStep2()}
+      {step === 3 && renderStep3()}
     </div>
   )
 }
@@ -544,8 +758,8 @@ export default function CampaignComposer() {
       {/* ── Tab panels ── */}
       {activeTab === 'whatsapp' && <WhatsAppTab />}
       {activeTab === 'email'    && (
-        <div className="cc-layout cc-layout--single">
-          <EmailCampaign />
+        <div className="cc-layout cc-layout--single cc-layout--wide">
+          <AgentEmailCampaign />
         </div>
       )}
     </div>
