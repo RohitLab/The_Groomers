@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LogoBrand from '../components/LogoBrand'
 
@@ -137,8 +137,47 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(null)
+  const [googleFilled, setGoogleFilled] = useState(false)
+  const gBtnRef = useRef(null)
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }))
+
+  // ── Google Sign-In auto-fill ───────────────────────────────
+  const handleGoogleSignIn = (response) => {
+    try {
+      const base64Url = response.credential.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const payload = JSON.parse(window.atob(base64))
+      setForm(f => ({
+        ...f,
+        name:  payload.name  || f.name,
+        email: payload.email || f.email,
+      }))
+      setGoogleFilled(true)
+    } catch (err) {
+      console.error('Google sign-in decode error:', err)
+    }
+  }
+
+  useEffect(() => {
+    // Store callback globally so GSI can reach it across re-renders
+    window.__groomersBookingGoogleCb = handleGoogleSignIn
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId || !window.google?.accounts?.id || !gBtnRef.current) return
+
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: (res) => window.__groomersBookingGoogleCb(res),
+    })
+    window.google.accounts.id.renderButton(gBtnRef.current, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      width: gBtnRef.current.offsetWidth || 340,
+    })
+  }, [])  // run once on mount — GSI loads async, so also guard with optional chaining above
 
   const effectiveService = form.service === 'Other' ? form.otherService : form.service
 
@@ -222,6 +261,40 @@ export default function BookingPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="book-form" noValidate>
+                {/* Google Sign-In auto-fill */}
+                {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                  <div style={{ marginBottom: '20px' }}>
+                    {googleFilled ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{
+                          background: 'rgba(76,175,80,0.1)',
+                          border: '1px solid rgba(76,175,80,0.3)',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          color: '#4CAF50',
+                          textAlign: 'center',
+                        }}
+                      >
+                        ✅ Name &amp; email auto-filled from Google!
+                      </motion.div>
+                    ) : (
+                      <div ref={gBtnRef} style={{ display: 'flex', justifyContent: 'center' }} />
+                    )}
+
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      margin: '16px 0 4px', color: '#888', fontSize: '11px',
+                    }}>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                      OR FILL MANUALLY
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+                    </div>
+                  </div>
+                )}
+
                 {/* Name */}
                 <div className="book-field">
                   <label className="book-label">Full Name <span className="book-req">*</span></label>
