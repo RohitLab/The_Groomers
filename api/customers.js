@@ -5,6 +5,7 @@ import {
   getAllCustomers,
   getSettings,
   saveToGoogleContacts,
+  findInAppointments,
 } from './_lib/googleSheets.js'
 
 export default async function handler(req, res) {
@@ -17,9 +18,71 @@ export default async function handler(req, res) {
         case 'check': {
           const { phone } = req.query
           if (!phone) return res.status(400).json({ error: 'Phone is required' })
-          const result = await lookupByPhone(phone)
-          if (result) return res.json({ customer: result.customer })
-          return res.status(404).json({ error: 'Customer not found' })
+
+          // 1. Check Customers sheet first
+          const existing = await lookupByPhone(phone)
+          if (existing) {
+            // Increment visit count and update lastVisit (same as lookup POST)
+            const updated = {
+              visits:    existing.customer.visits + 1,
+              lastVisit: new Date().toISOString().split('T')[0],
+            }
+            if (updated.visits >= 5) updated.tag = 'VIP'
+            else updated.tag = 'Regular'
+            try { await updateCustomer(phone, updated) } catch {}
+
+            return res.json({
+              found: true,
+              isReturning: true,
+              fromAppointment: false,
+              customerData: { ...existing.customer, ...updated },
+            })
+          }
+
+          // 2. Check Appointments sheet
+          const appt = await findInAppointments(phone)
+          if (appt) {
+            // Auto-create customer from appointment data
+            const today = new Date().toISOString().split('T')[0]
+            const newCustomer = {
+              phone:             appt.phone || phone,
+              name:              appt.name,
+              email:             appt.email,
+              gender:            '',
+              instagramFollowed: false,
+              facebookFollowed:  false,
+              googleReview:      false,
+              cashbackAmount:    0,
+              visits:            1,
+              firstVisit:        today,
+              lastVisit:         today,
+              tag:               'New',
+              billAmount:        0,
+              cashbackEarned:    0,
+              cashbackPercent:   5,
+              totalCashback:     0,
+            }
+            await appendCustomer(newCustomer)
+            // Non-blocking contacts sync
+            saveToGoogleContacts(newCustomer)
+              .then(ok => { if (ok) console.log('Contact synced (appt):', newCustomer.name) })
+              .catch(err => console.error('Contact sync error (appt):', err.message))
+
+            return res.json({
+              found: true,
+              isReturning: false,
+              fromAppointment: true,
+              customerData: {
+                name:   appt.name,
+                email:  appt.email,
+                phone:  appt.phone || phone,
+                gender: '',
+              },
+            })
+          }
+
+          // 3. Not found anywhere
+          return res.json({ found: false, isReturning: false, fromAppointment: false })
         }
 
         case 'list': {

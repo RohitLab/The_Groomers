@@ -3,12 +3,11 @@ import { api } from '../utils/api'
 
 const ScannerContext = createContext(null)
 
-const STEPS = ['phone', 'lookup', 'name', 'email', 'social', 'review', 'bill', 'cashback']
-
 export function ScannerProvider({ children }) {
   const [step, setStep] = useState('phone')
   const [phone, setPhone] = useState('')
   const [isReturning, setIsReturning] = useState(false)
+  const [isFromAppointment, setIsFromAppointment] = useState(false)
   const [customer, setCustomer] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -49,18 +48,37 @@ export function ScannerProvider({ children }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.lookupPhone(phoneNum)
-      if (res.found) {
-        setCustomer(res.customer)
+      // Use the unified check endpoint (3-way lookup)
+      const res = await fetch(`/api/customers?action=check&phone=${phoneNum}`)
+      const data = await res.json()
+
+      if (data.isReturning) {
+        // Existing customer in Customers sheet
+        setCustomer(data.customerData)
         setIsReturning(true)
+        setIsFromAppointment(false)
         setStep('welcomeBack')
-      } else {
+      } else if (data.fromAppointment) {
+        // Found in Appointments — already auto-created in Customers
+        setCustomer(data.customerData)
+        setFormData(prev => ({
+          ...prev,
+          name:  data.customerData.name  || '',
+          email: data.customerData.email || '',
+        }))
         setIsReturning(false)
+        setIsFromAppointment(true)
+        setStep('appointmentWelcome')
+      } else {
+        // Not found — full onboarding
+        setIsReturning(false)
+        setIsFromAppointment(false)
         setStep('name')
       }
-    } catch (err) {
-      // Demo mode: simulate not found
+    } catch {
+      // Demo / offline mode
       setIsReturning(false)
+      setIsFromAppointment(false)
       setStep('name')
     } finally {
       setLoading(false)
@@ -68,30 +86,33 @@ export function ScannerProvider({ children }) {
   }, [])
 
   const submitRegistration = useCallback(async () => {
+    // Appointment customers are already saved during the check — skip re-registration
+    if (isFromAppointment) return
+
     setLoading(true)
     try {
       await api.registerCustomer({
         phone,
-        name: formData.name,
-        email: formData.email,
-        gender: formData.gender,
+        name:              formData.name,
+        email:             formData.email,
+        gender:            formData.gender,
         instagramFollowed: formData.instagramFollowed,
-        facebookFollowed: formData.facebookFollowed,
-        googleReviewDone: formData.googleReviewDone,
+        facebookFollowed:  formData.facebookFollowed,
+        googleReviewDone:  formData.googleReviewDone,
       })
-    } catch (err) {
+    } catch {
       // Continue anyway in demo mode
     } finally {
       setLoading(false)
     }
-  }, [phone, formData])
+  }, [phone, formData, isFromAppointment])
 
   const submitBill = useCallback(async () => {
     setLoading(true)
     try {
       const amount = parseFloat(billAmount)
       await api.processBill(phone, amount, !isReturning)
-    } catch (err) {
+    } catch {
       // Continue in demo mode
     } finally {
       setLoading(false)
@@ -115,6 +136,7 @@ export function ScannerProvider({ children }) {
     setStep('phone')
     setPhone('')
     setIsReturning(false)
+    setIsFromAppointment(false)
     setCustomer(null)
     setFormData({ name: '', email: '', gender: '', instagramFollowed: false, facebookFollowed: false, googleReviewDone: false })
     setBillAmount('')
@@ -123,7 +145,7 @@ export function ScannerProvider({ children }) {
 
   return (
     <ScannerContext.Provider value={{
-      step, setStep, phone, setPhone, isReturning, customer,
+      step, setStep, phone, setPhone, isReturning, isFromAppointment, customer,
       loading, error, formData, setFormData, billAmount, setBillAmount,
       cashbackAmount, activeCashbackPercent, settings, lookupPhone, submitRegistration, submitBill, reset,
     }}>

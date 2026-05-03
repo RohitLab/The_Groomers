@@ -417,6 +417,37 @@ export async function getAppointments() {
   }
 }
 
+export async function findInAppointments(phone) {
+  const client = getClient()
+  if (!client) return null
+
+  try {
+    const response = await client.spreadsheets.values.get({
+      spreadsheetId: getSheetId(),
+      range: `${APPT_SHEET}!A2:J`,
+    })
+    const rows = response.data.values || []
+    const searchPhone = phone.replace(/\D/g, '').slice(-10)
+
+    const match = rows.find(row => {
+      const rowPhone = (row[2] || '').replace(/\D/g, '').slice(-10)
+      return rowPhone === searchPhone && rowPhone.length === 10
+    })
+
+    if (!match) return null
+
+    return {
+      name:    match[1] || '',
+      phone:   match[2] || '',
+      email:   match[3] || '',
+      service: match[4] || '',
+    }
+  } catch (err) {
+    console.error('findInAppointments error:', err.message)
+    return null
+  }
+}
+
 export async function updateAppointmentStatus(bookingId, status) {
   const client = getClient()
   if (!client) return false
