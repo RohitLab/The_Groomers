@@ -537,6 +537,43 @@ Generate a complete email campaign. Return ONLY this exact JSON, no markdown, no
           })
         }
 
+        // ── send-to-selected: send to a caller-supplied recipient list ──
+        case 'send-to-selected': {
+          const { subject, emailBody, previewText, recipients: list } = req.body
+          if (!subject || !emailBody || !list?.length) {
+            return res.status(400).json({ error: 'subject, emailBody, and recipients are required' })
+          }
+
+          let sent = 0, failed = 0
+          const failedEmails = []
+
+          for (const customer of list) {
+            const personalizedBody = emailBody
+              .replace('[Name]', customer.name || 'there')
+              .replace('{name}', customer.name || 'there')
+
+            const html = generateEmailHTML({
+              customerName: customer.name || 'Valued Customer',
+              message: personalizedBody,
+              previewText: previewText || subject,
+            })
+
+            const ok = await sendEmail({ to: customer.email, subject, html })
+            if (ok) sent++
+            else { failed++; failedEmails.push(customer.email) }
+
+            await new Promise(r => setTimeout(r, 200))
+          }
+
+          return res.status(200).json({
+            success: true,
+            report: {
+              total: list.length, sent, failed, failedEmails,
+              message: `✅ ${sent} email${sent !== 1 ? 's' : ''} sent!`,
+            },
+          })
+        }
+
         default:
           return res.status(400).json({ error: `Unknown POST action: ${action}` })
       }
