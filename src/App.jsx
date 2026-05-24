@@ -4,6 +4,7 @@ import ScanPage from './pages/ScanPage'
 import DashboardPage from './pages/DashboardPage'
 import BookingPage from './pages/BookingPage'
 import HomePage from './pages/HomePage'
+import BusinessLayout from './components/business/BusinessLayout'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/scan" element={<ScanPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/book" element={<BookingPage />} />
+          <Route path="/business/*" element={<BusinessLayout />} />
         </Routes>
       </AnimatePresence>
     </BrowserRouter>

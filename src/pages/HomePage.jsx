@@ -423,6 +423,7 @@ export default function HomePage() {
                 ? <button key={label} onClick={() => scrollTo(href.slice(1))} className="hp-footer__link">{label}</button>
                 : <Link key={label} to={href} className="hp-footer__link">{label}</Link>
             ))}
+            <Link to="/business" className="hp-footer__link" style={{ opacity: 0.4, fontSize: '0.75rem' }} title="Owner Portal">⚙️ Business</Link>
           </nav>
           <div className="hp-footer__copy">
             <p>© 2025 The Groomers Unisex Salon, Nashik</p>

@@ -32,7 +32,11 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar__footer">
-        <p className="sidebar__version">The Grommers CRM v1.0</p>
+        <a href="/business" className="sidebar__link" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="sidebar__link-icon">🏪</span>
+          Business Suite
+        </a>
+        <p className="sidebar__version">The Groomers CRM v1.0</p>
       </div>
     </aside>
   )
