@@ -92,12 +92,14 @@ button { background: none; border: none; cursor: pointer; font-family: inherit; 
   position: absolute; left: var(--x); top: var(--y);
   border-radius: 50%; opacity: .04;
   animation: geoFloat 8s ease-in-out infinite var(--delay);
+  will-change: transform;
 }
 .hp-geo--0 { width: 120px; height: 120px; background: var(--gold); }
 .hp-geo--1 { width: 60px; height: 60px; background: #fff; }
 .hp-geo--2 { width: 90px; height: 90px; border: 2px solid var(--gold); opacity: .06; }
 .hp-geo--3 { width: 40px; height: 40px; background: #fff; }
 @keyframes geoFloat { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-20px) scale(1.05); } }
+@media (max-width: 768px) { .hp-hero__geo { display: none; } }
 
 .hp-hero__inner {
   flex: 1; display: flex; align-items: center; gap: 3rem;

@@ -294,3 +294,42 @@
 .delay-3 { animation-delay: 0.3s !important; }
 .delay-4 { animation-delay: 0.4s !important; }
 .delay-5 { animation-delay: 0.5s !important; }
+
+/* ── Respect prefers-reduced-motion ────────────────────────
+   Kills ALL animations for users who opt out + helps
+   Lighthouse "avoids animations" audit.
+   ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Mobile: kill heavy continuous animations ───────────────
+   floatParticle / glowPulse / cardFlip3D run on the main
+   thread on mobile and directly cause LCP delays & INP spikes.
+   ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .particle { display: none; }
+  .anim-glow { animation: none !important; }
+  .anim-card-flip {
+    animation: fadeUp 0.3s ease both !important;
+  }
+  .tilt-3d:hover { transform: none; }
+  .stagger-children > * { animation-duration: 0.2s !important; }
+}
+
+/* ── GPU compositing hints ──────────────────────────────────
+   Tell the browser to promote these to their own layers
+   BEFORE the animation starts — prevents jank.
+   ──────────────────────────────────────────────────────── */
+.anim-float-in,
+.anim-fade-up,
+.anim-scale-in,
+.anim-shimmer { will-change: transform, opacity; }
+
+.particle { will-change: transform, opacity; }
+

@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import './HomePage.css'
+
+// Lazy-load QR code — it's below the fold, shouldn't block LCP
+const QRCodeSVG = lazy(() =>
+  import('qrcode.react').then(m => ({ default: m.QRCodeSVG }))
+)
+function QRPlaceholder() {
+  return <div style={{ width: 180, height: 180, borderRadius: 8, background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+}
 
 // ── Intersection Observer hook ──────────────────────────────
 function useInView(options = {}) {
@@ -302,13 +309,15 @@ export default function HomePage() {
               <div className="hp-scan__qr-card">
                 <div className="hp-scan__qr-label">📱 Scan with camera</div>
                 <div className="hp-qr-frame">
-                  <QRCodeSVG
-                    value="https://thegroomers.shop/scan"
-                    size={180}
-                    fgColor="#2c2c2a"
-                    bgColor="#ffffff"
-                    level="H"
-                  />
+                  <Suspense fallback={<QRPlaceholder />}>
+                    <QRCodeSVG
+                      value="https://thegroomers.shop/scan"
+                      size={180}
+                      fgColor="#2c2c2a"
+                      bgColor="#ffffff"
+                      level="H"
+                    />
+                  </Suspense>
                 </div>
                 <div className="hp-scan__qr-url">thegroomers.shop/scan</div>
                 <Link to="/scan" className="hp-btn hp-btn--gold hp-btn--sm" style={{marginTop:'0.75rem'}}>

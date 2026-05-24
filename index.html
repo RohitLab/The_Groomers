@@ -24,13 +24,43 @@
     <meta name="geo.region" content="IN-MH" />
     <meta name="geo.placename" content="Nashik" />
 
-    <!-- Fonts -->
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+
+    <!-- Preconnect only to font origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
 
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async></script>
+    <!--
+      NON-BLOCKING font load:
+      Load as print (non-render-blocking), then swap to all once loaded.
+      This alone can drop FCP by 1-2 seconds.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
+    </noscript>
+
+    <!-- Google Identity Services — deferred, never blocks paint -->
+    <script src="https://accounts.google.com/gsi/client" defer></script>
+
+    <!-- Inline critical CSS: prevents flash of unstyled content on first paint -->
+    <style>
+      *,::before,::after{box-sizing:border-box;margin:0;padding:0}
+      html{font-family:'DM Sans',system-ui,sans-serif}
+      body{background:#1a1a18;color:#f1efe8;-webkit-font-smoothing:antialiased}
+      #root{min-height:100vh}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+      .page-loader{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1a18}
+    </style>
 
     <!-- Schema: Local Business -->
     <script type="application/ld+json">
@@ -52,12 +82,6 @@
       "servesCuisine": "Beauty Services"
     }
     </script>
-
-    <!-- TODO: Submit to Google Search Console -->
-    <!-- URL: https://search.google.com/search-console -->
-    <!-- Add property: thegroomers.shop -->
-    <!-- Verify via HTML tag method -->
-    <!-- Submit sitemap after verification -->
   </head>
   <body>
     <div id="root"></div>
