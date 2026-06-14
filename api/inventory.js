@@ -1,9 +1,13 @@
 import db from './_lib/sheetsHelper.js'
 import setCors from './_lib/cors.js'
+import { requirePin, isSafeUrl } from './_lib/auth.js'
 
 export default async function handler(req, res) {
-  setCors(res)
+  setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  // VULN-003: All inventory routes require dashboard PIN
+  if (!requirePin(req, res)) return
 
   const { action } = req.query
 
@@ -28,6 +32,10 @@ export default async function handler(req, res) {
         if (!body.selling_price) return res.status(400).json({ error: 'Selling price required' })
         if (parseFloat(body.selling_price) < parseFloat(body.purchase_price)) {
           return res.status(400).json({ error: 'Selling price must be >= purchase price' })
+        }
+        // VULN-014: Validate image_url to prevent SSRF
+        if (body.image_url && !isSafeUrl(body.image_url)) {
+          return res.status(400).json({ error: 'Invalid image URL — must be a public https address' })
         }
 
         const product = {
@@ -183,7 +191,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid action' })
     }
   } catch (error) {
+    // VULN-004: Log internally, never expose error details to client
     console.error('Inventory API error:', error)
-    return res.status(500).json({ error: 'Server error', message: error.message })
+    return res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }

@@ -1,6 +1,7 @@
 import { composeCampaignMessage } from './_lib/marketingAgent.js'
 import { getSettings, getAllCustomers } from './_lib/googleSheets.js'
 import { sendEmail } from './_lib/emailService.js'
+import { requirePin, sanitizePromptInput, escapeCsvField, maskEmail } from './_lib/auth.js'
 
 export const maxDuration = 60
 
@@ -136,11 +137,19 @@ function generateEmailHTML({ customerName, message, previewText }) {
 // Main handler
 // ─────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-  // CORS headers — allow browser clients
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  // VULN-005: Restrict CORS to known origins
+  const ALLOWED_ORIGINS = ['https://thegroomers.shop','https://the-groomers.vercel.app','http://localhost:5173','http://localhost:4173']
+  const origin = req.headers.origin
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dashboard-Pin')
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  // VULN-003: All campaign actions require dashboard PIN
+  if (!requirePin(req, res)) return
 
   const { action } = req.query
 
@@ -148,13 +157,19 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     // ── generate-ai: handled outside try/catch so real errors surface ──
     if (action === 'generate-ai') {
-      const { offer, language, mode } = req.body
+      const rawOffer = req.body.offer
+      // VULN-007: Sanitize user input before injecting into AI prompt
+      const offer = sanitizePromptInput(rawOffer, 400)
       if (!offer) return res.status(400).json({ error: 'offer is required' })
 
       const apiKey = process.env.GEMINI_API_KEY
       if (!apiKey) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY not configured' })
+        return res.status(500).json({ error: 'AI service not configured' })
       }
+
+      // VULN-007: Sanitize language before putting it in prompt
+      const language = sanitizePromptInput(req.body.language, 30)
+      const mode = req.body.mode
 
       // ── Email generation mode ──────────────────────────────
       if (mode === 'email') {
@@ -303,10 +318,12 @@ no extra text, no backticks:
             }
           }
 
+          // VULN-020: Use proper CSV escaping to prevent formula injection in Excel/Sheets
           const csv = [
             'Phone,Name,Email,Tag,Visits,Last Visit',
             ...customers.map(c =>
-              `${c.phone},"${c.name}",${c.email},${c.tag},${c.visits},${c.lastVisit}`
+              [c.phone, c.name, c.email, c.tag, c.visits, c.lastVisit]
+                .map(escapeCsvField).join(',')
             ),
           ].join('\n')
 
@@ -359,6 +376,8 @@ no extra text, no backticks:
 
             if (ok) {
               sent++
+              // VULN-009: Mask PII in logs — never log raw email addresses
+              console.log(`[CAMPAIGN] Email sent | masked: ${maskEmail(customer.email)}`)
             } else {
               failed++
             }
@@ -537,17 +556,35 @@ Generate a complete email campaign. Return ONLY this exact JSON, no markdown, no
           })
         }
 
-        // ── send-to-selected: send to a caller-supplied recipient list ──
+        // ── send-to-selected: validate recipients against customer DB ──────
         case 'send-to-selected': {
           const { subject, emailBody, previewText, recipients: list } = req.body
           if (!subject || !emailBody || !list?.length) {
             return res.status(400).json({ error: 'subject, emailBody, and recipients are required' })
           }
 
+          // VULN-010: Only allow sending to real customers — never arbitrary addresses
+          const allCustomers = await getAllCustomers()
+          const customerEmailSet = new Set(allCustomers.map(c => (c.email || '').toLowerCase()).filter(Boolean))
+
+          const safeList = list.filter(r => {
+            const email = (r.email || '').toLowerCase()
+            return email && email.includes('@') && customerEmailSet.has(email)
+          })
+
+          if (safeList.length === 0) {
+            return res.status(400).json({ error: 'No valid customer recipients found in the database' })
+          }
+
+          // VULN-016: Prevent massive list abuse
+          if (safeList.length > 500) {
+            return res.status(400).json({ error: 'Recipient list too large (max 500 per send)' })
+          }
+
           let sent = 0, failed = 0
           const failedEmails = []
 
-          for (const customer of list) {
+          for (const customer of safeList) {
             const personalizedBody = emailBody
               .replace('[Name]', customer.name || 'there')
               .replace('{name}', customer.name || 'there')
@@ -560,7 +597,7 @@ Generate a complete email campaign. Return ONLY this exact JSON, no markdown, no
 
             const ok = await sendEmail({ to: customer.email, subject, html })
             if (ok) sent++
-            else { failed++; failedEmails.push(customer.email) }
+            else { failed++; failedEmails.push(maskEmail(customer.email)) }
 
             await new Promise(r => setTimeout(r, 200))
           }
@@ -568,18 +605,19 @@ Generate a complete email campaign. Return ONLY this exact JSON, no markdown, no
           return res.status(200).json({
             success: true,
             report: {
-              total: list.length, sent, failed, failedEmails,
+              total: safeList.length, sent, failed, failedEmails,
               message: `✅ ${sent} email${sent !== 1 ? 's' : ''} sent!`,
             },
           })
         }
 
         default:
-          return res.status(400).json({ error: `Unknown POST action: ${action}` })
+          return res.status(400).json({ error: 'Unknown action' })
       }
     } catch (err) {
+      // VULN-004: Log internally, never expose error details to client
       console.error(`Campaign API error (${action}):`, err)
-      return res.status(500).json({ error: err.message || 'Server error' })
+      return res.status(500).json({ error: 'An internal error occurred. Please try again.' })
     }
   }
 

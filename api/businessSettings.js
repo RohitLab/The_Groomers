@@ -1,9 +1,13 @@
 import db from './_lib/sheetsHelper.js'
 import setCors from './_lib/cors.js'
+import { requirePin } from './_lib/auth.js'
 
 export default async function handler(req, res) {
-  setCors(res)
+  setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  // VULN-003: Business settings require dashboard PIN
+  if (!requirePin(req, res)) return
 
   const { action } = req.query
 
@@ -30,6 +34,11 @@ export default async function handler(req, res) {
       case 'updateSetting': {
         const { key, value } = req.body
         if (!key) return res.status(400).json({ error: 'Key required' })
+        // Only allow known setting keys to prevent arbitrary data injection
+        const ALLOWED_KEYS = new Set(['business_name','currency_symbol','financial_year_start','tax_rate','low_stock_threshold'])
+        if (!ALLOWED_KEYS.has(key)) {
+          return res.status(400).json({ error: 'Unknown setting key' })
+        }
 
         const rows = await db.getTab('Business_Settings')
         const existing = rows.find(r => r.key === key)
@@ -51,7 +60,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid action' })
     }
   } catch (error) {
+    // VULN-004: Log internally, never expose error details to client
     console.error('BusinessSettings API error:', error)
-    return res.status(500).json({ error: 'Server error', message: error.message })
+    return res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }

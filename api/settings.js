@@ -1,5 +1,6 @@
 import { google } from 'googleapis'
 import { getSettings, updateSettings, getAllCustomers } from './_lib/googleSheets.js'
+import { rateLimit, getClientIp, maskPhone } from './_lib/auth.js'
 
 // Extend Vercel function timeout to 60s for bulk sync
 export const maxDuration = 60
@@ -34,9 +35,24 @@ export default async function handler(req, res) {
 
         case 'verify-pin': {
           const { pin } = req.body
+
+          // VULN-006: Rate-limit PIN attempts to 5 per 5 minutes per IP
+          const ip = getClientIp(req)
+          if (!rateLimit(`pin:${ip}`, 5, 5 * 60 * 1000)) {
+            return res.status(429).json({
+              error: 'Too many PIN attempts. Please wait 5 minutes before trying again.',
+            })
+          }
+
           const correctPin = process.env.DASHBOARD_PIN || '1234'
+          // VULN-015: Warn owner if default PIN is still in use
+          const isDefaultPin = correctPin === '1234'
+          if (isDefaultPin) {
+            console.warn('[SECURITY] Dashboard PIN is still the default 1234. Please update DASHBOARD_PIN env var.')
+          }
+
           if (pin === correctPin) {
-            return res.json({ success: true })
+            return res.json({ success: true, isDefaultPin })
           }
           return res.status(401).json({ error: 'Invalid PIN' })
         }
@@ -129,6 +145,8 @@ export default async function handler(req, res) {
 
               synced++
               existingNumbers.add(cleanPhone) // prevent re-adding within same run
+              // VULN-009: Mask phone in production logs
+              console.log(`[CONTACTS] Synced: ${maskPhone(cleanPhone)}`)
 
               // Throttle: 300ms between requests to stay within Google rate limits
               await new Promise(resolve => setTimeout(resolve, 300))
@@ -156,6 +174,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (err) {
     console.error(`Settings API error (${action}):`, err)
+    // VULN-004: Safe fallback for settings GET — return defaults, not error details
     if (action === 'get') {
       return res.json({
         settings: {
@@ -170,6 +189,6 @@ export default async function handler(req, res) {
         },
       })
     }
-    res.status(500).json({ error: 'Server error' })
+    res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }

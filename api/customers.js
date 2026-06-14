@@ -7,6 +7,7 @@ import {
   saveToGoogleContacts,
   findInAppointments,
 } from './_lib/googleSheets.js'
+import { maskPhone, maskEmail } from './_lib/auth.js'
 
 export default async function handler(req, res) {
   const { action } = req.query
@@ -17,7 +18,10 @@ export default async function handler(req, res) {
       switch (action) {
         case 'check': {
           const { phone } = req.query
-          if (!phone) return res.status(400).json({ error: 'Phone is required' })
+          // VULN-011: Strict server-side phone validation — 10 digits only
+          if (!phone || !/^\d{10}$/.test(phone)) {
+            return res.status(400).json({ error: 'Valid 10-digit phone number required' })
+          }
 
           // 1. Check Customers sheet first
           const existing = await lookupByPhone(phone)
@@ -65,7 +69,8 @@ export default async function handler(req, res) {
             await appendCustomer(newCustomer)
             // Non-blocking contacts sync
             saveToGoogleContacts(newCustomer)
-              .then(ok => { if (ok) console.log('Contact synced (appt):', newCustomer.name) })
+              // VULN-009: Mask PII in logs — never log raw customer names or phones
+              .then(ok => { if (ok) console.log(`Contact synced: ${maskPhone(newCustomer.phone)}`) })
               .catch(err => console.error('Contact sync error (appt):', err.message))
 
             return res.json({
@@ -137,7 +142,8 @@ export default async function handler(req, res) {
 
           // Non-blocking: sync to Google Contacts in background — never delays response
           saveToGoogleContacts(customer)
-            .then(ok => { if (ok) console.log('Contact synced:', customer.name) })
+            // VULN-009: Mask PII in production logs
+            .then(ok => { if (ok) console.log(`Contact synced: ${maskPhone(customer.phone)}`) })
             .catch(err => console.error('Contact sync error:', err.message))
 
           return res.json({ success: true, customer })
@@ -222,7 +228,8 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (err) {
+    // VULN-004: Log internally, never expose stack/details to client
     console.error(`Customer API error (${action}):`, err)
-    res.status(500).json({ error: 'Server error' })
+    res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }

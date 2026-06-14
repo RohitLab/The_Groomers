@@ -32,10 +32,23 @@ function getSheetId() {
 
 // ── SheetsDB Class ────────────────────────────────────────────────────
 
+// VULN-017: Allowlist of valid tab names — prevents sheet tab injection
+const ALLOWED_TABS = new Set([
+  'Customers', 'Settings', 'Appointments', 'Expenses', 'Sales',
+  'Sale_Items', 'Products', 'Stock_Movements', 'Business_Settings',
+])
+
+function assertTab(tabName) {
+  if (!ALLOWED_TABS.has(tabName)) {
+    throw new Error(`Access denied: unknown sheet tab '${tabName}'`)
+  }
+}
+
 class SheetsDB {
   // ─── READ ────────────────────────────────────
 
   async getTab(tabName) {
+    assertTab(tabName)  // VULN-017
     const client = getClient()
     if (!client) throw new Error('Sheets client not available')
     try {
@@ -77,6 +90,7 @@ class SheetsDB {
   // ─── WRITE ───────────────────────────────────
 
   async appendRow(tabName, dataObj) {
+    assertTab(tabName)  // VULN-017
     const client = getClient()
     if (!client) throw new Error('Sheets client not available')
     const headers = await this.getHeaders(tabName)
@@ -89,13 +103,14 @@ class SheetsDB {
     await client.spreadsheets.values.append({
       spreadsheetId: getSheetId(),
       range: tabName,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',  // VULN-024: RAW prevents formula injection
       resource: { values: [row] },
     })
     return dataObj
   }
 
   async updateRow(tabName, rowIndex, dataObj) {
+    assertTab(tabName)  // VULN-017
     const client = getClient()
     if (!client) throw new Error('Sheets client not available')
     const headers = await this.getHeaders(tabName)
@@ -106,13 +121,14 @@ class SheetsDB {
     await client.spreadsheets.values.update({
       spreadsheetId: getSheetId(),
       range: `${tabName}!A${rowIndex}`,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',  // VULN-024: RAW prevents formula injection
       resource: { values: [row] },
     })
     return merged
   }
 
   async batchAppend(tabName, dataArray) {
+    assertTab(tabName)  // VULN-017
     const client = getClient()
     if (!client) throw new Error('Sheets client not available')
     const headers = await this.getHeaders(tabName)
@@ -125,7 +141,7 @@ class SheetsDB {
     await client.spreadsheets.values.append({
       spreadsheetId: getSheetId(),
       range: tabName,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',  // VULN-024: RAW prevents formula injection
       resource: { values: rows },
     })
     return dataArray

@@ -1,9 +1,13 @@
 import db from './_lib/sheetsHelper.js'
 import setCors from './_lib/cors.js'
+import { requirePin } from './_lib/auth.js'
 
 export default async function handler(req, res) {
-  setCors(res)
+  setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  // VULN-003: All sales routes require dashboard PIN
+  if (!requirePin(req, res)) return
 
   const { action } = req.query
 
@@ -164,7 +168,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid action' })
     }
   } catch (error) {
+    // VULN-004: Log internally, never expose error details to client
     console.error('Sales API error:', error)
-    return res.status(500).json({ error: 'Server error', message: error.message })
+    return res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }

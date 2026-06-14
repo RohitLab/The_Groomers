@@ -26,7 +26,9 @@ export async function sendEmail({ to, subject, html }) {
       subject,
       html,
     })
-    console.log(`[EMAIL] Sent to: ${to} | ID: ${result?.data?.id || 'unknown'}`)
+    // VULN-009: Mask email in production logs — never store raw PII in log streams
+    const masked = to.replace(/(^.{2}).*(@.*)$/, '$1***$2')
+    console.log(`[EMAIL] Sent | masked: ${masked} | ID: ${result?.data?.id || 'unknown'}`)
     return true
   } catch (err) {
     console.error(`[EMAIL] Failed to send to ${to}:`, err?.message, err?.response?.data || '')

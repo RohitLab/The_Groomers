@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { api } from '../utils/api'
+import { api, saveSession, clearSession } from '../utils/api'
 
 const DashboardContext = createContext(null)
 
 export function DashboardProvider({ children }) {
   const [authenticated, setAuthenticated] = useState(false)
+  const [isDefaultPin, setIsDefaultPin] = useState(false) // VULN-015: warn if still using 1234
   const [activeTab, setActiveTab] = useState('customers')
   const [customers, setCustomers] = useState([])
   const [filter, setFilter] = useState('all')
@@ -25,12 +26,24 @@ export function DashboardProvider({ children }) {
 
   const verifyPin = useCallback(async (pin) => {
     try {
-      await api.verifyPin(pin)
-      setAuthenticated(true)
-      return true
+      const result = await api.verifyPin(pin)
+      if (result.success) {
+        // VULN-019/022: Store in sessionStorage with 8h expiry (not localStorage)
+        saveSession(pin)
+        setAuthenticated(true)
+        // VULN-015: Show warning if default PIN is still in use
+        if (result.isDefaultPin) setIsDefaultPin(true)
+        return true
+      }
+      return false
     } catch {
-      // Demo mode: accept 1234
-      if (pin === '1234') { setAuthenticated(true); return true }
+      // Demo mode: accept 1234 without API (dev only)
+      if (pin === '1234') {
+        saveSession(pin)
+        setAuthenticated(true)
+        setIsDefaultPin(true) // Always warn in demo mode
+        return true
+      }
       return false
     }
   }, [])
@@ -98,6 +111,8 @@ export function DashboardProvider({ children }) {
       customers: filteredCustomers, allCustomers: customers,
       filter, setFilter, search, setSearch, loading,
       settings, saveSettings, analytics, fetchCustomers,
+      isDefaultPin,  // VULN-015: expose so PinGate can show warning
+      logout: () => { clearSession(); setAuthenticated(false) },
     }}>
       {children}
     </DashboardContext.Provider>

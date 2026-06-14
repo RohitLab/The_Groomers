@@ -2,6 +2,15 @@ import { google } from 'googleapis'
 
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://thegroomers.shop/api/auth/callback'
 
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default async function handler(req, res) {
   const { code, error } = req.query
 
@@ -88,7 +97,6 @@ export default async function handler(req, res) {
             word-break: break-all;
             color: #98FB98;
             text-align: left;
-            user-select: all;
           }
           .steps {
             background: #252525;
@@ -123,9 +131,9 @@ export default async function handler(req, res) {
           <h2>✅ Google Contacts Connected!</h2>
           <p>Your Google account has been authorized. Copy the refresh token below and add it to Vercel.</p>
 
-          <div class="token-box" id="token">${tokens.refresh_token}</div>
-          <button class="copy-btn" onclick="
-            navigator.clipboard.writeText(document.getElementById('token').innerText);
+          <div class="token-box">••••••••••••••••••••••••••••••••••••••••</div>
+          <button class="copy-btn" id="copyBtn" data-token="${escapeHtml(tokens.refresh_token)}" onclick="
+            navigator.clipboard.writeText(this.getAttribute('data-token'));
             this.textContent = '✓ Copied!';
             setTimeout(() => this.textContent = 'Copy Token', 2000);
           ">Copy Token</button>
@@ -148,7 +156,7 @@ export default async function handler(req, res) {
       <html>
       <body style="font-family:sans-serif;padding:40px;background:#1a1a1a;color:white;text-align:center">
         <h2 style="color:#f44336">❌ Authorization Failed</h2>
-        <p style="color:#aaa">${err.message}</p>
+        <p style="color:#aaa">${escapeHtml(err.message)}</p>
         <p style="color:#aaa">Please try again from the Settings page.</p>
       </body>
       </html>

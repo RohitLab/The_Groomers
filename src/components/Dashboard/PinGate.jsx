@@ -3,10 +3,11 @@ import { useDashboard } from '../../context/DashboardContext'
 import LogoBrand from '../LogoBrand'
 
 export default function PinGate() {
-  const { verifyPin } = useDashboard()
+  const { verifyPin, isDefaultPin } = useDashboard()
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showDefaultWarning, setShowDefaultWarning] = useState(false)
 
   const handleKey = async (digit) => {
     if (pin.length >= 4) return
@@ -20,6 +21,8 @@ export default function PinGate() {
       if (!ok) {
         setError('Incorrect PIN')
         setPin('')
+      } else if (isDefaultPin) {
+        setShowDefaultWarning(true)
       }
       setLoading(false)
     }
@@ -57,9 +60,23 @@ export default function PinGate() {
         </div>
 
         {error && <p className="pin-error anim-fade-up">{error}</p>}
-        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-6)' }}>
-          Default PIN: 1234
-        </p>
+
+        {/* VULN-015: Warn owner if still using default PIN 1234 */}
+        {showDefaultWarning && (
+          <div style={{
+            marginTop: 'var(--space-4)',
+            padding: '10px 14px',
+            background: 'rgba(245,166,35,0.12)',
+            border: '1px solid rgba(245,166,35,0.4)',
+            borderRadius: '8px',
+            fontSize: 'var(--font-size-xs)',
+            color: '#F5A623',
+            lineHeight: 1.5,
+          }}>
+            ⚠️ <strong>Security:</strong> You're using the default PIN (1234).<br />
+            Change <code>DASHBOARD_PIN</code> in Vercel → Settings → Environment Variables.
+          </div>
+        )}
       </div>
     </div>
   )

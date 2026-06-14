@@ -1,9 +1,13 @@
 import db from './_lib/sheetsHelper.js'
 import setCors from './_lib/cors.js'
+import { requirePin, isSafeUrl } from './_lib/auth.js'
 
 export default async function handler(req, res) {
-  setCors(res)
+  setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
+
+  // VULN-003: All expense routes require dashboard PIN
+  if (!requirePin(req, res)) return
 
   const { action } = req.query
 
@@ -13,6 +17,10 @@ export default async function handler(req, res) {
       case 'addExpense': {
         const { expense_date, category, subcategory, amount, payment_method, description, receipt_url, is_recurring, recurring_type } = req.body
         if (!category || !amount) return res.status(400).json({ error: 'Category and amount required' })
+        // VULN-014: Validate receipt_url to prevent SSRF if ever fetched server-side
+        if (receipt_url && !isSafeUrl(receipt_url)) {
+          return res.status(400).json({ error: 'Invalid receipt URL — must be a public https address' })
+        }
 
         const expense = {
           expense_id: db.generateId('EXP'),
@@ -128,7 +136,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid action' })
     }
   } catch (error) {
+    // VULN-004: Log internally, never expose error details to client
     console.error('Expenses API error:', error)
-    return res.status(500).json({ error: 'Server error', message: error.message })
+    return res.status(500).json({ error: 'An internal error occurred. Please try again.' })
   }
 }
