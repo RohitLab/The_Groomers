@@ -1,0 +1,8 @@
+# .vercelignore — files/folders to exclude from Vercel deployment
+# Syntax is the same as .gitignore
+
+# Local CLI setup scripts — NOT serverless functions
+# These are run locally via: node api/setup/createTabs.js
+# Excluding them prevents Vercel from counting them toward the
+# 12 serverless function limit on the Hobby plan.
+api/setup/

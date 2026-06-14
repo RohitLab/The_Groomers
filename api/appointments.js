@@ -1,12 +1,12 @@
 import { saveAppointment, getAppointments, updateAppointmentStatus } from './_lib/googleSheets.js'
 import { sendEmail } from './_lib/emailService.js'
+import setCors from './_lib/cors.js'
+import { requirePin } from './_lib/auth.js'
 
 export const maxDuration = 30
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  setCors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
 
   const { action } = req.query
@@ -87,14 +87,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, bookingId, message: 'Appointment booked successfully' })
   }
 
-  // ── GET ALL APPOINTMENTS (dashboard) ─────────────────────
+  // ── GET ALL APPOINTMENTS (dashboard — PIN protected) ─────────────────────
   if (req.method === 'GET' && action === 'list') {
+    if (!requirePin(req, res)) return
     const appointments = await getAppointments()
     return res.status(200).json({ appointments })
   }
 
-  // ── UPDATE STATUS ─────────────────────────────────────────
+  // ── UPDATE STATUS (dashboard — PIN protected) ─────────────────────────────
   if (req.method === 'POST' && action === 'update-status') {
+    if (!requirePin(req, res)) return
     const { bookingId, status } = req.body
     if (!bookingId || !status) {
       return res.status(400).json({ error: 'bookingId and status required' })
